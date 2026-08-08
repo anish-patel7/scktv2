@@ -12,11 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as CostSheetsIndexRouteImport } from './routes/cost-sheets.index'
 import { Route as CostSheetsIdRouteImport } from './routes/cost-sheets.$id'
 import { Route as CostSheetsNewRouteImport } from './routes/cost-sheets.new'
 import { Route as MastersTypeRouteImport } from './routes/masters.$type'
 import { Route as SystemAuditRouteImport } from './routes/system.audit'
+import { Route as SystemSettingsRouteImport } from './routes/system.settings'
 import { Route as SystemUsersRouteImport } from './routes/system.users'
 
 const IndexRoute = IndexRouteImport.update({
@@ -32,6 +34,11 @@ const ApprovalsRoute = ApprovalsRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CostSheetsIndexRoute = CostSheetsIndexRouteImport.update({
@@ -59,6 +66,11 @@ const SystemAuditRoute = SystemAuditRouteImport.update({
   path: '/system/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SystemSettingsRoute = SystemSettingsRouteImport.update({
+  id: '/system/settings',
+  path: '/system/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemUsersRoute = SystemUsersRouteImport.update({
   id: '/system/users',
   path: '/system/users',
@@ -69,10 +81,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/reports': typeof ReportsRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
   '/masters/$type': typeof MastersTypeRoute
   '/system/audit': typeof SystemAuditRoute
+  '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
@@ -80,10 +94,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/reports': typeof ReportsRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
   '/masters/$type': typeof MastersTypeRoute
   '/system/audit': typeof SystemAuditRoute
+  '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
   '/cost-sheets': typeof CostSheetsIndexRoute
 }
@@ -92,10 +108,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/reports': typeof ReportsRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
   '/masters/$type': typeof MastersTypeRoute
   '/system/audit': typeof SystemAuditRoute
+  '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
@@ -105,10 +123,12 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/auth'
+    | '/reports'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
     | '/masters/$type'
     | '/system/audit'
+    | '/system/settings'
     | '/system/users'
     | '/cost-sheets/'
   fileRoutesByTo: FileRoutesByTo
@@ -116,10 +136,12 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/auth'
+    | '/reports'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
     | '/masters/$type'
     | '/system/audit'
+    | '/system/settings'
     | '/system/users'
     | '/cost-sheets'
   id:
@@ -127,10 +149,12 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/auth'
+    | '/reports'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
     | '/masters/$type'
     | '/system/audit'
+    | '/system/settings'
     | '/system/users'
     | '/cost-sheets/'
   fileRoutesById: FileRoutesById
@@ -139,10 +163,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApprovalsRoute: typeof ApprovalsRoute
   AuthRoute: typeof AuthRoute
+  ReportsRoute: typeof ReportsRoute
   CostSheetsIdRoute: typeof CostSheetsIdRoute
   CostSheetsNewRoute: typeof CostSheetsNewRoute
   MastersTypeRoute: typeof MastersTypeRoute
   SystemAuditRoute: typeof SystemAuditRoute
+  SystemSettingsRoute: typeof SystemSettingsRoute
   SystemUsersRoute: typeof SystemUsersRoute
   CostSheetsIndexRoute: typeof CostSheetsIndexRoute
 }
@@ -168,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cost-sheets/': {
@@ -205,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/system/settings': {
+      id: '/system/settings'
+      path: '/system/settings'
+      fullPath: '/system/settings'
+      preLoaderRoute: typeof SystemSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system/users': {
       id: '/system/users'
       path: '/system/users'
@@ -219,10 +259,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApprovalsRoute: ApprovalsRoute,
   AuthRoute: AuthRoute,
+  ReportsRoute: ReportsRoute,
   CostSheetsIdRoute: CostSheetsIdRoute,
   CostSheetsNewRoute: CostSheetsNewRoute,
   MastersTypeRoute: MastersTypeRoute,
   SystemAuditRoute: SystemAuditRoute,
+  SystemSettingsRoute: SystemSettingsRoute,
   SystemUsersRoute: SystemUsersRoute,
   CostSheetsIndexRoute: CostSheetsIndexRoute,
 }

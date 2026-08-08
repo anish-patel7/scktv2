@@ -27,7 +27,7 @@ function SidebarLink({
   to: string;
   label: string;
   collapsed: boolean;
-  phase?: number;
+  phase?: number | undefined;
 }) {
   return (
     <Link
@@ -69,7 +69,7 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth", search: { next: pathname } });
+    if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate, pathname]);
 
   if (loading || !user) {
@@ -178,7 +178,7 @@ export function AppShell({
             aria-label="Sign out"
             onClick={async () => {
               await supabase.auth.signOut();
-              navigate({ to: "/auth", search: { next: "/" } });
+              navigate({ to: "/auth" });
             }}
           >
             <LogOut className="size-4" />

@@ -15,6 +15,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CostSheetsIndexRouteImport } from './routes/cost-sheets.index'
 import { Route as CostSheetsIdRouteImport } from './routes/cost-sheets.$id'
 import { Route as CostSheetsNewRouteImport } from './routes/cost-sheets.new'
+import { Route as MastersTypeRouteImport } from './routes/masters.$type'
+import { Route as SystemAuditRouteImport } from './routes/system.audit'
+import { Route as SystemUsersRouteImport } from './routes/system.users'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +49,21 @@ const CostSheetsNewRoute = CostSheetsNewRouteImport.update({
   path: '/cost-sheets/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MastersTypeRoute = MastersTypeRouteImport.update({
+  id: '/masters/$type',
+  path: '/masters/$type',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemAuditRoute = SystemAuditRouteImport.update({
+  id: '/system/audit',
+  path: '/system/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemUsersRoute = SystemUsersRouteImport.update({
+  id: '/system/users',
+  path: '/system/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,6 +71,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
+  '/masters/$type': typeof MastersTypeRoute
+  '/system/audit': typeof SystemAuditRoute
+  '/system/users': typeof SystemUsersRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +82,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
+  '/masters/$type': typeof MastersTypeRoute
+  '/system/audit': typeof SystemAuditRoute
+  '/system/users': typeof SystemUsersRoute
   '/cost-sheets': typeof CostSheetsIndexRoute
 }
 export interface FileRoutesById {
@@ -70,6 +94,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
+  '/masters/$type': typeof MastersTypeRoute
+  '/system/audit': typeof SystemAuditRoute
+  '/system/users': typeof SystemUsersRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +107,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
+    | '/masters/$type'
+    | '/system/audit'
+    | '/system/users'
     | '/cost-sheets/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +118,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
+    | '/masters/$type'
+    | '/system/audit'
+    | '/system/users'
     | '/cost-sheets'
   id:
     | '__root__'
@@ -96,6 +129,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
+    | '/masters/$type'
+    | '/system/audit'
+    | '/system/users'
     | '/cost-sheets/'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +141,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CostSheetsIdRoute: typeof CostSheetsIdRoute
   CostSheetsNewRoute: typeof CostSheetsNewRoute
+  MastersTypeRoute: typeof MastersTypeRoute
+  SystemAuditRoute: typeof SystemAuditRoute
+  SystemUsersRoute: typeof SystemUsersRoute
   CostSheetsIndexRoute: typeof CostSheetsIndexRoute
 }
 
@@ -152,6 +191,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CostSheetsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/masters/$type': {
+      id: '/masters/$type'
+      path: '/masters/$type'
+      fullPath: '/masters/$type'
+      preLoaderRoute: typeof MastersTypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system/audit': {
+      id: '/system/audit'
+      path: '/system/audit'
+      fullPath: '/system/audit'
+      preLoaderRoute: typeof SystemAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system/users': {
+      id: '/system/users'
+      path: '/system/users'
+      fullPath: '/system/users'
+      preLoaderRoute: typeof SystemUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -161,6 +221,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CostSheetsIdRoute: CostSheetsIdRoute,
   CostSheetsNewRoute: CostSheetsNewRoute,
+  MastersTypeRoute: MastersTypeRoute,
+  SystemAuditRoute: SystemAuditRoute,
+  SystemUsersRoute: SystemUsersRoute,
   CostSheetsIndexRoute: CostSheetsIndexRoute,
 }
 export const routeTree = rootRouteImport

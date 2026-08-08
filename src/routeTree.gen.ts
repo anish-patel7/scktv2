@@ -10,12 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CostSheetsIndexRouteImport } from './routes/cost-sheets.index'
+import { Route as CostSheetsIdRouteImport } from './routes/cost-sheets.$id'
+import { Route as CostSheetsNewRouteImport } from './routes/cost-sheets.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -28,34 +36,75 @@ const CostSheetsIndexRoute = CostSheetsIndexRouteImport.update({
   path: '/cost-sheets/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CostSheetsIdRoute = CostSheetsIdRouteImport.update({
+  id: '/cost-sheets/$id',
+  path: '/cost-sheets/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CostSheetsNewRoute = CostSheetsNewRouteImport.update({
+  id: '/cost-sheets/new',
+  path: '/cost-sheets/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/cost-sheets/$id': typeof CostSheetsIdRoute
+  '/cost-sheets/new': typeof CostSheetsNewRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/cost-sheets/$id': typeof CostSheetsIdRoute
+  '/cost-sheets/new': typeof CostSheetsNewRoute
   '/cost-sheets': typeof CostSheetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/cost-sheets/$id': typeof CostSheetsIdRoute
+  '/cost-sheets/new': typeof CostSheetsNewRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/cost-sheets/'
+  fullPaths:
+    | '/'
+    | '/approvals'
+    | '/auth'
+    | '/cost-sheets/$id'
+    | '/cost-sheets/new'
+    | '/cost-sheets/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/cost-sheets'
-  id: '__root__' | '/' | '/auth' | '/cost-sheets/'
+  to:
+    | '/'
+    | '/approvals'
+    | '/auth'
+    | '/cost-sheets/$id'
+    | '/cost-sheets/new'
+    | '/cost-sheets'
+  id:
+    | '__root__'
+    | '/'
+    | '/approvals'
+    | '/auth'
+    | '/cost-sheets/$id'
+    | '/cost-sheets/new'
+    | '/cost-sheets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApprovalsRoute: typeof ApprovalsRoute
   AuthRoute: typeof AuthRoute
+  CostSheetsIdRoute: typeof CostSheetsIdRoute
+  CostSheetsNewRoute: typeof CostSheetsNewRoute
   CostSheetsIndexRoute: typeof CostSheetsIndexRoute
 }
 
@@ -66,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -82,12 +138,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CostSheetsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cost-sheets/$id': {
+      id: '/cost-sheets/$id'
+      path: '/cost-sheets/$id'
+      fullPath: '/cost-sheets/$id'
+      preLoaderRoute: typeof CostSheetsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cost-sheets/new': {
+      id: '/cost-sheets/new'
+      path: '/cost-sheets/new'
+      fullPath: '/cost-sheets/new'
+      preLoaderRoute: typeof CostSheetsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApprovalsRoute: ApprovalsRoute,
   AuthRoute: AuthRoute,
+  CostSheetsIdRoute: CostSheetsIdRoute,
+  CostSheetsNewRoute: CostSheetsNewRoute,
   CostSheetsIndexRoute: CostSheetsIndexRoute,
 }
 export const routeTree = rootRouteImport

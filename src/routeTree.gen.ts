@@ -10,20 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DesignsRouteImport } from './routes/designs'
+import { Route as FeedersRouteImport } from './routes/feeders'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as CostSheetsIndexRouteImport } from './routes/cost-sheets.index'
 import { Route as CostSheetsIdRouteImport } from './routes/cost-sheets.$id'
 import { Route as CostSheetsNewRouteImport } from './routes/cost-sheets.new'
+import { Route as InventoryBeamRouteImport } from './routes/inventory.beam'
+import { Route as InventoryFabricRouteImport } from './routes/inventory.fabric'
+import { Route as InventoryYarnRouteImport } from './routes/inventory.yarn'
 import { Route as MastersTypeRouteImport } from './routes/masters.$type'
+import { Route as ProductionDailyRouteImport } from './routes/production.daily'
+import { Route as ProductionJobCardsRouteImport } from './routes/production.job-cards'
+import { Route as ProductionLoomsRouteImport } from './routes/production.looms'
+import { Route as ProductionOrdersRouteImport } from './routes/production.orders'
+import { Route as QualityInspectionRouteImport } from './routes/quality.inspection'
+import { Route as QualityShadeRouteImport } from './routes/quality.shade'
+import { Route as SalesCustomersRouteImport } from './routes/sales.customers'
+import { Route as SalesOrdersRouteImport } from './routes/sales.orders'
+import { Route as SalesOutstandingRouteImport } from './routes/sales.outstanding'
+import { Route as SalesQuotationsRouteImport } from './routes/sales.quotations'
 import { Route as SystemAuditRouteImport } from './routes/system.audit'
+import { Route as SystemBackupRouteImport } from './routes/system.backup'
 import { Route as SystemSettingsRouteImport } from './routes/system.settings'
 import { Route as SystemUsersRouteImport } from './routes/system.users'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApprovalsRoute = ApprovalsRouteImport.update({
@@ -34,6 +57,21 @@ const ApprovalsRoute = ApprovalsRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignsRoute = DesignsRouteImport.update({
+  id: '/designs',
+  path: '/designs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedersRoute = FeedersRouteImport.update({
+  id: '/feeders',
+  path: '/feeders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -56,14 +94,84 @@ const CostSheetsNewRoute = CostSheetsNewRouteImport.update({
   path: '/cost-sheets/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InventoryBeamRoute = InventoryBeamRouteImport.update({
+  id: '/inventory/beam',
+  path: '/inventory/beam',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryFabricRoute = InventoryFabricRouteImport.update({
+  id: '/inventory/fabric',
+  path: '/inventory/fabric',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryYarnRoute = InventoryYarnRouteImport.update({
+  id: '/inventory/yarn',
+  path: '/inventory/yarn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MastersTypeRoute = MastersTypeRouteImport.update({
   id: '/masters/$type',
   path: '/masters/$type',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductionDailyRoute = ProductionDailyRouteImport.update({
+  id: '/production/daily',
+  path: '/production/daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductionJobCardsRoute = ProductionJobCardsRouteImport.update({
+  id: '/production/job-cards',
+  path: '/production/job-cards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductionLoomsRoute = ProductionLoomsRouteImport.update({
+  id: '/production/looms',
+  path: '/production/looms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductionOrdersRoute = ProductionOrdersRouteImport.update({
+  id: '/production/orders',
+  path: '/production/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QualityInspectionRoute = QualityInspectionRouteImport.update({
+  id: '/quality/inspection',
+  path: '/quality/inspection',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QualityShadeRoute = QualityShadeRouteImport.update({
+  id: '/quality/shade',
+  path: '/quality/shade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesCustomersRoute = SalesCustomersRouteImport.update({
+  id: '/sales/customers',
+  path: '/sales/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesOrdersRoute = SalesOrdersRouteImport.update({
+  id: '/sales/orders',
+  path: '/sales/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesOutstandingRoute = SalesOutstandingRouteImport.update({
+  id: '/sales/outstanding',
+  path: '/sales/outstanding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesQuotationsRoute = SalesQuotationsRouteImport.update({
+  id: '/sales/quotations',
+  path: '/sales/quotations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemAuditRoute = SystemAuditRouteImport.update({
   id: '/system/audit',
   path: '/system/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemBackupRoute = SystemBackupRouteImport.update({
+  id: '/system/backup',
+  path: '/system/backup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SystemSettingsRoute = SystemSettingsRouteImport.update({
@@ -79,26 +187,62 @@ const SystemUsersRoute = SystemUsersRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/designs': typeof DesignsRoute
+  '/feeders': typeof FeedersRoute
+  '/gallery': typeof GalleryRoute
   '/reports': typeof ReportsRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
+  '/inventory/beam': typeof InventoryBeamRoute
+  '/inventory/fabric': typeof InventoryFabricRoute
+  '/inventory/yarn': typeof InventoryYarnRoute
   '/masters/$type': typeof MastersTypeRoute
+  '/production/daily': typeof ProductionDailyRoute
+  '/production/job-cards': typeof ProductionJobCardsRoute
+  '/production/looms': typeof ProductionLoomsRoute
+  '/production/orders': typeof ProductionOrdersRoute
+  '/quality/inspection': typeof QualityInspectionRoute
+  '/quality/shade': typeof QualityShadeRoute
+  '/sales/customers': typeof SalesCustomersRoute
+  '/sales/orders': typeof SalesOrdersRoute
+  '/sales/outstanding': typeof SalesOutstandingRoute
+  '/sales/quotations': typeof SalesQuotationsRoute
   '/system/audit': typeof SystemAuditRoute
+  '/system/backup': typeof SystemBackupRoute
   '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/designs': typeof DesignsRoute
+  '/feeders': typeof FeedersRoute
+  '/gallery': typeof GalleryRoute
   '/reports': typeof ReportsRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
+  '/inventory/beam': typeof InventoryBeamRoute
+  '/inventory/fabric': typeof InventoryFabricRoute
+  '/inventory/yarn': typeof InventoryYarnRoute
   '/masters/$type': typeof MastersTypeRoute
+  '/production/daily': typeof ProductionDailyRoute
+  '/production/job-cards': typeof ProductionJobCardsRoute
+  '/production/looms': typeof ProductionLoomsRoute
+  '/production/orders': typeof ProductionOrdersRoute
+  '/quality/inspection': typeof QualityInspectionRoute
+  '/quality/shade': typeof QualityShadeRoute
+  '/sales/customers': typeof SalesCustomersRoute
+  '/sales/orders': typeof SalesOrdersRoute
+  '/sales/outstanding': typeof SalesOutstandingRoute
+  '/sales/quotations': typeof SalesQuotationsRoute
   '/system/audit': typeof SystemAuditRoute
+  '/system/backup': typeof SystemBackupRoute
   '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
   '/cost-sheets': typeof CostSheetsIndexRoute
@@ -106,13 +250,31 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
+  '/designs': typeof DesignsRoute
+  '/feeders': typeof FeedersRoute
+  '/gallery': typeof GalleryRoute
   '/reports': typeof ReportsRoute
   '/cost-sheets/$id': typeof CostSheetsIdRoute
   '/cost-sheets/new': typeof CostSheetsNewRoute
+  '/inventory/beam': typeof InventoryBeamRoute
+  '/inventory/fabric': typeof InventoryFabricRoute
+  '/inventory/yarn': typeof InventoryYarnRoute
   '/masters/$type': typeof MastersTypeRoute
+  '/production/daily': typeof ProductionDailyRoute
+  '/production/job-cards': typeof ProductionJobCardsRoute
+  '/production/looms': typeof ProductionLoomsRoute
+  '/production/orders': typeof ProductionOrdersRoute
+  '/quality/inspection': typeof QualityInspectionRoute
+  '/quality/shade': typeof QualityShadeRoute
+  '/sales/customers': typeof SalesCustomersRoute
+  '/sales/orders': typeof SalesOrdersRoute
+  '/sales/outstanding': typeof SalesOutstandingRoute
+  '/sales/quotations': typeof SalesQuotationsRoute
   '/system/audit': typeof SystemAuditRoute
+  '/system/backup': typeof SystemBackupRoute
   '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
@@ -121,39 +283,93 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/analytics'
     | '/approvals'
     | '/auth'
+    | '/designs'
+    | '/feeders'
+    | '/gallery'
     | '/reports'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
+    | '/inventory/beam'
+    | '/inventory/fabric'
+    | '/inventory/yarn'
     | '/masters/$type'
+    | '/production/daily'
+    | '/production/job-cards'
+    | '/production/looms'
+    | '/production/orders'
+    | '/quality/inspection'
+    | '/quality/shade'
+    | '/sales/customers'
+    | '/sales/orders'
+    | '/sales/outstanding'
+    | '/sales/quotations'
     | '/system/audit'
+    | '/system/backup'
     | '/system/settings'
     | '/system/users'
     | '/cost-sheets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/analytics'
     | '/approvals'
     | '/auth'
+    | '/designs'
+    | '/feeders'
+    | '/gallery'
     | '/reports'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
+    | '/inventory/beam'
+    | '/inventory/fabric'
+    | '/inventory/yarn'
     | '/masters/$type'
+    | '/production/daily'
+    | '/production/job-cards'
+    | '/production/looms'
+    | '/production/orders'
+    | '/quality/inspection'
+    | '/quality/shade'
+    | '/sales/customers'
+    | '/sales/orders'
+    | '/sales/outstanding'
+    | '/sales/quotations'
     | '/system/audit'
+    | '/system/backup'
     | '/system/settings'
     | '/system/users'
     | '/cost-sheets'
   id:
     | '__root__'
     | '/'
+    | '/analytics'
     | '/approvals'
     | '/auth'
+    | '/designs'
+    | '/feeders'
+    | '/gallery'
     | '/reports'
     | '/cost-sheets/$id'
     | '/cost-sheets/new'
+    | '/inventory/beam'
+    | '/inventory/fabric'
+    | '/inventory/yarn'
     | '/masters/$type'
+    | '/production/daily'
+    | '/production/job-cards'
+    | '/production/looms'
+    | '/production/orders'
+    | '/quality/inspection'
+    | '/quality/shade'
+    | '/sales/customers'
+    | '/sales/orders'
+    | '/sales/outstanding'
+    | '/sales/quotations'
     | '/system/audit'
+    | '/system/backup'
     | '/system/settings'
     | '/system/users'
     | '/cost-sheets/'
@@ -161,13 +377,31 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   ApprovalsRoute: typeof ApprovalsRoute
   AuthRoute: typeof AuthRoute
+  DesignsRoute: typeof DesignsRoute
+  FeedersRoute: typeof FeedersRoute
+  GalleryRoute: typeof GalleryRoute
   ReportsRoute: typeof ReportsRoute
   CostSheetsIdRoute: typeof CostSheetsIdRoute
   CostSheetsNewRoute: typeof CostSheetsNewRoute
+  InventoryBeamRoute: typeof InventoryBeamRoute
+  InventoryFabricRoute: typeof InventoryFabricRoute
+  InventoryYarnRoute: typeof InventoryYarnRoute
   MastersTypeRoute: typeof MastersTypeRoute
+  ProductionDailyRoute: typeof ProductionDailyRoute
+  ProductionJobCardsRoute: typeof ProductionJobCardsRoute
+  ProductionLoomsRoute: typeof ProductionLoomsRoute
+  ProductionOrdersRoute: typeof ProductionOrdersRoute
+  QualityInspectionRoute: typeof QualityInspectionRoute
+  QualityShadeRoute: typeof QualityShadeRoute
+  SalesCustomersRoute: typeof SalesCustomersRoute
+  SalesOrdersRoute: typeof SalesOrdersRoute
+  SalesOutstandingRoute: typeof SalesOutstandingRoute
+  SalesQuotationsRoute: typeof SalesQuotationsRoute
   SystemAuditRoute: typeof SystemAuditRoute
+  SystemBackupRoute: typeof SystemBackupRoute
   SystemSettingsRoute: typeof SystemSettingsRoute
   SystemUsersRoute: typeof SystemUsersRoute
   CostSheetsIndexRoute: typeof CostSheetsIndexRoute
@@ -182,6 +416,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/approvals': {
       id: '/approvals'
       path: '/approvals'
@@ -194,6 +435,27 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/designs': {
+      id: '/designs'
+      path: '/designs'
+      fullPath: '/designs'
+      preLoaderRoute: typeof DesignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feeders': {
+      id: '/feeders'
+      path: '/feeders'
+      fullPath: '/feeders'
+      preLoaderRoute: typeof FeedersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -224,6 +486,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CostSheetsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inventory/beam': {
+      id: '/inventory/beam'
+      path: '/inventory/beam'
+      fullPath: '/inventory/beam'
+      preLoaderRoute: typeof InventoryBeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/fabric': {
+      id: '/inventory/fabric'
+      path: '/inventory/fabric'
+      fullPath: '/inventory/fabric'
+      preLoaderRoute: typeof InventoryFabricRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/yarn': {
+      id: '/inventory/yarn'
+      path: '/inventory/yarn'
+      fullPath: '/inventory/yarn'
+      preLoaderRoute: typeof InventoryYarnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/masters/$type': {
       id: '/masters/$type'
       path: '/masters/$type'
@@ -231,11 +514,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MastersTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/production/daily': {
+      id: '/production/daily'
+      path: '/production/daily'
+      fullPath: '/production/daily'
+      preLoaderRoute: typeof ProductionDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/production/job-cards': {
+      id: '/production/job-cards'
+      path: '/production/job-cards'
+      fullPath: '/production/job-cards'
+      preLoaderRoute: typeof ProductionJobCardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/production/looms': {
+      id: '/production/looms'
+      path: '/production/looms'
+      fullPath: '/production/looms'
+      preLoaderRoute: typeof ProductionLoomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/production/orders': {
+      id: '/production/orders'
+      path: '/production/orders'
+      fullPath: '/production/orders'
+      preLoaderRoute: typeof ProductionOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quality/inspection': {
+      id: '/quality/inspection'
+      path: '/quality/inspection'
+      fullPath: '/quality/inspection'
+      preLoaderRoute: typeof QualityInspectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quality/shade': {
+      id: '/quality/shade'
+      path: '/quality/shade'
+      fullPath: '/quality/shade'
+      preLoaderRoute: typeof QualityShadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/customers': {
+      id: '/sales/customers'
+      path: '/sales/customers'
+      fullPath: '/sales/customers'
+      preLoaderRoute: typeof SalesCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/orders': {
+      id: '/sales/orders'
+      path: '/sales/orders'
+      fullPath: '/sales/orders'
+      preLoaderRoute: typeof SalesOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/outstanding': {
+      id: '/sales/outstanding'
+      path: '/sales/outstanding'
+      fullPath: '/sales/outstanding'
+      preLoaderRoute: typeof SalesOutstandingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales/quotations': {
+      id: '/sales/quotations'
+      path: '/sales/quotations'
+      fullPath: '/sales/quotations'
+      preLoaderRoute: typeof SalesQuotationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system/audit': {
       id: '/system/audit'
       path: '/system/audit'
       fullPath: '/system/audit'
       preLoaderRoute: typeof SystemAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system/backup': {
+      id: '/system/backup'
+      path: '/system/backup'
+      fullPath: '/system/backup'
+      preLoaderRoute: typeof SystemBackupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/system/settings': {
@@ -257,13 +617,31 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalyticsRoute: AnalyticsRoute,
   ApprovalsRoute: ApprovalsRoute,
   AuthRoute: AuthRoute,
+  DesignsRoute: DesignsRoute,
+  FeedersRoute: FeedersRoute,
+  GalleryRoute: GalleryRoute,
   ReportsRoute: ReportsRoute,
   CostSheetsIdRoute: CostSheetsIdRoute,
   CostSheetsNewRoute: CostSheetsNewRoute,
+  InventoryBeamRoute: InventoryBeamRoute,
+  InventoryFabricRoute: InventoryFabricRoute,
+  InventoryYarnRoute: InventoryYarnRoute,
   MastersTypeRoute: MastersTypeRoute,
+  ProductionDailyRoute: ProductionDailyRoute,
+  ProductionJobCardsRoute: ProductionJobCardsRoute,
+  ProductionLoomsRoute: ProductionLoomsRoute,
+  ProductionOrdersRoute: ProductionOrdersRoute,
+  QualityInspectionRoute: QualityInspectionRoute,
+  QualityShadeRoute: QualityShadeRoute,
+  SalesCustomersRoute: SalesCustomersRoute,
+  SalesOrdersRoute: SalesOrdersRoute,
+  SalesOutstandingRoute: SalesOutstandingRoute,
+  SalesQuotationsRoute: SalesQuotationsRoute,
   SystemAuditRoute: SystemAuditRoute,
+  SystemBackupRoute: SystemBackupRoute,
   SystemSettingsRoute: SystemSettingsRoute,
   SystemUsersRoute: SystemUsersRoute,
   CostSheetsIndexRoute: CostSheetsIndexRoute,

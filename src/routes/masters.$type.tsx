@@ -238,7 +238,7 @@ function MasterPage() {
       actions={
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={handleOpenCreate} className="h-7 gap-1 text-xs">
-            <Plus className="size-3.5" /> + New Record
+            <Plus className="size-3.5" /> New Record
           </Button>
         </div>
       }

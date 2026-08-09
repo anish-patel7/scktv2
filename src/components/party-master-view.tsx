@@ -356,7 +356,7 @@ export function PartyMasterView() {
           </Badge>
 
           <Button size="sm" onClick={handleNewRecord} className="h-8 gap-1 text-xs">
-            <Plus className="size-3.5" /> + New Record
+            <Plus className="size-3.5" /> New Record
           </Button>
         </div>
       </div>

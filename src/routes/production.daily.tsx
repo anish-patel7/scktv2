@@ -84,7 +84,7 @@ function Page() {
   );
 
   const create = () => {
-    if (!form.job_card_id) return toast.error("Select a job card");
+    if (!form.job_card_id) { toast.error("Select a job card"); return; }
     const card = data.jobCards.find((c) => c.id === form.job_card_id);
     const entry: DailyProduction = {
       id: uid("dp"),

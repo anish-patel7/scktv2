@@ -56,8 +56,8 @@ function Page() {
   const [form, setForm] = useState(emptyForm());
 
   const create = () => {
-    if (!form.card_no.trim()) return toast.error("Card number is required");
-    if (!form.order_id) return toast.error("Select a production order");
+    if (!form.card_no.trim()) { toast.error("Card number is required"); return; }
+    if (!form.order_id) { toast.error("Select a production order"); return; }
     const card: JobCard = {
       id: uid("jc"),
       card_no: form.card_no.trim(),

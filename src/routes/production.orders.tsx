@@ -79,7 +79,7 @@ function Page() {
   };
 
   const create = () => {
-    if (!form.order_no.trim()) return toast.error("Order number is required");
+    if (!form.order_no.trim()) { toast.error("Order number is required"); return; }
     const order: ProductionOrder = {
       id: uid("po"),
       order_no: form.order_no.trim(),

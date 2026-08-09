@@ -51,7 +51,7 @@ function Page() {
   const [form, setForm] = useState({ loom_no: "", loom_type: "Jacquard", panna_inch: "", remarks: "" });
 
   const addLoom = () => {
-    if (!form.loom_no.trim()) return toast.error("Loom number is required");
+    if (!form.loom_no.trim()) { toast.error("Loom number is required"); return; }
     const loom: Loom = {
       id: uid("lm"),
       loom_no: form.loom_no.trim(),

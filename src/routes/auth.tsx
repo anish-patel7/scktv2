@@ -58,8 +58,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-const CHEHAR_KRUPA_LOGO_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCOROZcJBNncFih1msk3FhKyMnbSjuDU5JmRPgV6KwxfDYn4TQGeODwNWACbZsw9byBC3QkHjPgIaQpcEmT2VAjc_2cZunhT9ks6YBY8wdVYMf9uJV-8h_hEgKtJ9VU_8RDibsLSmjDqV0IgMeVIjAszyoUrNPUJf26imszvk0wyiTko9r6yMDtWJhDyxxFXSuNdlpYrh4K59ETgeg4fDKfhzQtVadQuNKHbybvqhnNTvFjQ10X2Q092aNSAcv3MZLLoFE";
+const CHEHAR_KRUPA_LOGO_URL = "/logo-ck.svg";
 
 function AuthPage() {
   const navigate = useNavigate();

@@ -56,11 +56,9 @@ export function AppShell({
         )}
       >
         <div className="flex h-11 items-center gap-2 border-b border-sidebar-border px-3">
-          <span className="grid size-6 place-items-center rounded-sm bg-sidebar-primary text-[0.625rem] font-bold text-sidebar-primary-foreground">
-            SCKT
-          </span>
+          <img src="/logo-ck.svg" alt="CK Monogram Logo" className="size-6 object-contain filter drop-shadow-xs" />
           {!collapsed && (
-            <span className="text-sm font-semibold tracking-tight text-sidebar-accent-foreground">
+            <span className="text-sm font-bold tracking-tight text-sidebar-accent-foreground">
               SCKT
             </span>
           )}

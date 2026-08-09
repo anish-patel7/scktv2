@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { setAuthenticatedUser } from "@/hooks/useAuth";
@@ -47,6 +47,52 @@ function AuthPage() {
   const [activeTab, setActiveTab] = useState<"signin" | "request">("signin");
   const [showPassword, setShowPassword] = useState(false);
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
+
+  // Card Zoom State (Applies only to sign-in card)
+  const [cardScale, setCardScale] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = parseFloat(localStorage.getItem("ck_card_zoom") || "");
+    return saved >= 0.6 && saved <= 2.2 ? saved : 1;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("ck_card_zoom", String(cardScale));
+    } catch (_) {}
+  }, [cardScale]);
+
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setCardScale((prev) => {
+        const delta = e.deltaY < 0 ? 0.06 : -0.06;
+        return Math.min(2.2, Math.max(0.6, prev + delta));
+      });
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        setCardScale((prev) => Math.min(2.2, prev + 0.1));
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        setCardScale((prev) => Math.max(0.6, prev - 0.1));
+      } else if (e.key === "0") {
+        e.preventDefault();
+        setCardScale(1);
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("keydown", handleKey);
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, []);
 
   // Sign In State
   const [email, setEmail] = useState("");
@@ -232,7 +278,23 @@ function AuthPage() {
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(220,223,230,0.95) 0%, rgba(210,213,220,0.98) 100%)" }}></div>
 
           {/* Login Card */}
-          <div data-signin-card="1" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: "424px", background: "#ffffff", borderRadius: "18px", padding: "36px 36px 28px", boxShadow: "0 12px 48px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)" }}>
+          <div
+            data-signin-card="1"
+            style={{
+              position: "relative",
+              zIndex: 1,
+              width: "100%",
+              maxWidth: "424px",
+              background: "#ffffff",
+              borderRadius: "18px",
+              padding: "36px 36px 28px",
+              boxShadow: "0 12px 48px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)",
+              transform: `scale(${cardScale})`,
+              transformOrigin: "center center",
+              transition: "transform 0.12s ease-out",
+              willChange: "transform",
+            }}
+          >
             {/* Card Logo */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "18px" }}>
               <img src="/ck-logo.png" alt="Chehar Krupa" style={{ width: "82px", height: "auto", display: "block" }} />
@@ -490,6 +552,39 @@ function AuthPage() {
               </div>
             )}
           </div>
+
+          {/* Zoom Reset Affordance */}
+          {Math.abs(cardScale - 1) >= 0.01 && (
+            <button
+              type="button"
+              onClick={() => setCardScale(1)}
+              style={{
+                position: "absolute",
+                bottom: "18px",
+                right: "20px",
+                zIndex: 3,
+                display: "flex",
+                alignItems: "center",
+                gap: "7px",
+                background: "#ffffff",
+                border: "1px solid #d0d3da",
+                borderRadius: "8px",
+                padding: "7px 12px",
+                fontFamily: "Poppins, sans-serif",
+                fontSize: "11.5px",
+                fontWeight: 500,
+                color: "#5a6070",
+                cursor: "pointer",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12a9 9 0 109-9 9 9 0 00-6.36 2.64L3 8"></path>
+                <path d="M3 3v5h5"></path>
+              </svg>
+              <span>{Math.round(cardScale * 100)}% (Reset)</span>
+            </button>
+          )}
         </div>
       </div>
 

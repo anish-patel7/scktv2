@@ -25,23 +25,23 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Shield,
-  Factory,
   ShieldCheck,
-  Calculator,
-  Truck,
-  Package,
-  BarChart3,
   Database,
   Cpu,
   Users,
   HelpCircle,
+  LayoutGrid,
+  Sparkles,
+  BarChart3,
+  Package,
+  Truck,
+  Palette,
 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Chehar Krupa Group Textile Production System" },
+      { title: "Sign in — Chehar Krupa Group of Industries" },
       {
         name: "description",
         content: "Sign in to Chehar Krupa Group of Industries Textile Production & Management System.",
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/auth")({
       { property: "og:title", content: "Chehar Krupa Group — Textile Production System" },
       {
         property: "og:description",
-        content: "Integrated platform for textile production, costing, inventory, quality, and sales.",
+        content: "Integrated platform for managing textile production, costing, inventory, quality, sales and business operations.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -57,8 +57,6 @@ export const Route = createFileRoute("/auth")({
   }),
   component: AuthPage,
 });
-
-const CHEHAR_KRUPA_LOGO_URL = "/logo-ck.svg";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -156,156 +154,156 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f8] flex flex-col justify-between font-sans antialiased text-[#111827]">
-      {/* Top Main Section */}
-      <div className="flex-1 grid lg:grid-cols-12 min-h-0">
+    <div className="flex min-h-screen flex-col bg-[#0d1829] font-sans antialiased text-white selection:bg-[#c9a84e]/30">
+      <div className="flex flex-1 flex-col lg:flex-row min-h-0">
         {/* ========================================================================= */}
-        {/* LEFT BRAND PANEL (7 Columns, Dark Theme with Metallic Weaving Texture) */}
+        {/* LEFT PANEL (50% Width, Dark Navy Blue Theme) */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-7 bg-[#091624] text-white p-8 lg:p-14 flex flex-col justify-between relative overflow-hidden border-r border-[#152a3f]">
-          {/* Subtle background loom pattern overlay */}
+        <div className="w-full lg:w-1/2 relative bg-[#0d1829] overflow-hidden flex flex-col justify-between p-8 lg:p-14 border-b lg:border-b-0 border-[#1c2c44]">
+          {/* Unsplash Factory/Textile Overlay */}
           <div
-            className="absolute inset-0 opacity-10 bg-cover bg-center pointer-events-none mix-blend-overlay"
+            className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-15"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1200&auto=format&fit=crop')",
+                "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80')",
             }}
           />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0d1829]/95 via-[#0d1829]/85 to-[#0d1829]/92 pointer-events-none" />
 
-          {/* Top Logo Section */}
-          <div className="relative z-10 flex items-center gap-4">
-            {/* Custom Monogram Badge */}
-            <div className="size-14 rounded-lg bg-gradient-to-br from-[#d4af37] to-[#aa7c11] p-0.5 shadow-lg flex items-center justify-center">
-              <div className="size-full bg-[#091624] rounded-[6px] flex items-center justify-center p-1">
-                <img
-                  alt="Chehar Krupa Monogram"
-                  src={CHEHAR_KRUPA_LOGO_URL}
-                  className="size-full object-contain filter drop-shadow-md"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = "none";
-                  }}
-                />
+          <div className="relative z-10 space-y-6">
+            {/* Logo Header Row */}
+            <div className="flex items-center gap-5 mb-8">
+              <img
+                src="/ck-logo.png"
+                alt="Chehar Krupa"
+                className="w-32 lg:w-36 h-auto object-contain filter drop-shadow-md"
+              />
+              <div>
+                <div className="text-2xl lg:text-3xl font-extrabold text-[#d5aa4d] tracking-[3px] leading-tight pb-1 border-b-[2.5px] border-[#d5aa4d] whitespace-nowrap">
+                  CHEHAR KRUPA
+                </div>
+                <div className="text-xs lg:text-sm font-medium text-white tracking-[7px] pt-1.5 text-center whitespace-nowrap">
+                  GROUP OF INDUSTRIES
+                </div>
               </div>
             </div>
 
-            <div>
-              <div className="text-xl lg:text-2xl font-bold tracking-wide text-[#e6c666]">
-                CHEHAR KRUPA
-              </div>
-              <div className="text-[0.625rem] lg:text-xs font-semibold tracking-[0.25em] text-gray-300 uppercase">
-                Group of Industries
-              </div>
-            </div>
-          </div>
+            {/* Main Title */}
+            <h1 className="text-2xl lg:text-4xl font-extrabold text-white leading-tight tracking-wider text-center lg:text-left">
+              TEXTILE PRODUCTION <br />
+              <span className="text-[#c9a84e] font-bold block mt-1">
+                & MANAGEMENT SYSTEM
+              </span>
+            </h1>
 
-          {/* Center Main Copy */}
-          <div className="relative z-10 my-8 lg:my-0 space-y-6 max-w-xl">
-            <div className="space-y-2">
-              <h1 className="text-3xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
-                TEXTILE PRODUCTION <br />
-                <span className="text-[#e6c666] font-semibold block mt-1">
-                  & MANAGEMENT SYSTEM
-                </span>
-              </h1>
-              <div className="h-1 w-20 bg-[#d4af37] rounded-full" />
-            </div>
+            <div className="w-14 h-1 bg-[#c9a84e] my-6" />
 
-            <p className="text-sm lg:text-base text-gray-300 leading-relaxed">
+            <p className="text-sm lg:text-base text-white/70 leading-relaxed max-w-xl">
               Integrated platform for managing textile production, costing, inventory, quality, sales and business operations.
             </p>
 
-            {/* 6 Capabilities Feature Grid */}
-            <div className="grid grid-cols-2 gap-3 pt-4">
-              <div className="flex items-center gap-3 bg-[#112338]/80 border border-[#1e3854] p-3 rounded-lg">
-                <Factory className="size-5 text-[#d4af37]" />
-                <span className="text-xs font-semibold text-gray-200">Production Management</span>
+            {/* Feature 2x3 Grid */}
+            <div className="grid grid-cols-2 gap-4 max-w-lg pt-4">
+              <div className="flex items-center gap-3.5">
+                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
+                  <LayoutGrid className="size-5 text-[#c9a84e]" />
+                </div>
+                <span className="text-xs font-medium text-white/90">Production Management</span>
               </div>
 
-              <div className="flex items-center gap-3 bg-[#112338]/80 border border-[#1e3854] p-3 rounded-lg">
-                <ShieldCheck className="size-5 text-[#d4af37]" />
-                <span className="text-xs font-semibold text-gray-200">Quality Control</span>
+              <div className="flex items-center gap-3.5">
+                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
+                  <ShieldCheck className="size-5 text-[#c9a84e]" />
+                </div>
+                <span className="text-xs font-medium text-white/90">Quality Control</span>
               </div>
 
-              <div className="flex items-center gap-3 bg-[#112338]/80 border border-[#1e3854] p-3 rounded-lg">
-                <Calculator className="size-5 text-[#d4af37]" />
-                <span className="text-xs font-semibold text-gray-200">Design & Costing</span>
+              <div className="flex items-center gap-3.5">
+                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
+                  <Palette className="size-5 text-[#c9a84e]" />
+                </div>
+                <span className="text-xs font-medium text-white/90">Design & Costing</span>
               </div>
 
-              <div className="flex items-center gap-3 bg-[#112338]/80 border border-[#1e3854] p-3 rounded-lg">
-                <Truck className="size-5 text-[#d4af37]" />
-                <span className="text-xs font-semibold text-gray-200">Sales & Dispatch</span>
+              <div className="flex items-center gap-3.5">
+                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
+                  <Truck className="size-5 text-[#c9a84e]" />
+                </div>
+                <span className="text-xs font-medium text-white/90">Sales & Dispatch</span>
               </div>
 
-              <div className="flex items-center gap-3 bg-[#112338]/80 border border-[#1e3854] p-3 rounded-lg">
-                <Package className="size-5 text-[#d4af37]" />
-                <span className="text-xs font-semibold text-gray-200">Inventory Management</span>
+              <div className="flex items-center gap-3.5">
+                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
+                  <Package className="size-5 text-[#c9a84e]" />
+                </div>
+                <span className="text-xs font-medium text-white/90">Inventory Management</span>
               </div>
 
-              <div className="flex items-center gap-3 bg-[#112338]/80 border border-[#1e3854] p-3 rounded-lg">
-                <BarChart3 className="size-5 text-[#d4af37]" />
-                <span className="text-xs font-semibold text-gray-200">Reports & Analytics</span>
+              <div className="flex items-center gap-3.5">
+                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
+                  <BarChart3 className="size-5 text-[#c9a84e]" />
+                </div>
+                <span className="text-xs font-medium text-white/90">Reports & Analytics</span>
               </div>
             </div>
           </div>
 
           {/* Left Footer Security Tag */}
-          <div className="relative z-10 pt-6 border-t border-[#1a334e] flex items-center justify-between">
-            <div className="inline-flex items-center gap-2 bg-[#d4af37]/10 border border-[#d4af37]/40 px-3 py-1 rounded text-[0.6875rem] font-bold text-[#e6c666] tracking-wider uppercase">
-              <Lock className="size-3.5" /> Internal Use Only
+          <div className="relative z-10 pt-8 border-t border-white/10 mt-8 text-center space-y-2">
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-[#c9a84e] tracking-[2.5px] uppercase">
+              <Lock className="size-4" /> Internal Use Only
             </div>
-            <p className="text-[0.6875rem] text-gray-400 font-mono">
+            <p className="text-xs text-white/40 font-mono">
               © 2024 Chehar Krupa Group of Industries. All rights reserved.
             </p>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* RIGHT ACTION PANEL (5 Columns, Clean Floating Card Theme) */}
+        {/* RIGHT PANEL (50% Width, Light Soft Blue/Grey Card Overlay Theme) */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-5 bg-[#f3f5f8] p-6 lg:p-12 flex flex-col justify-between items-center relative overflow-y-auto">
-          {/* Top Right System Tag */}
-          <div className="w-full flex justify-end">
-            <div className="inline-flex items-center gap-1.5 bg-[#e2e8f0] px-3 py-1 rounded text-[0.6875rem] font-bold text-[#334155] uppercase tracking-wider">
-              <Shield className="size-3.5 text-[#054d4a]" /> Internal System
+        <div className="w-full lg:w-1/2 relative bg-[#d8dbe1] flex items-center justify-center p-6 lg:p-12 overflow-y-auto">
+          <div
+            className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-5"
+            style={{
+              backgroundImage:
+                "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80')",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#dcdfdf]/95 to-[#d2d5dc]/98 pointer-events-none" />
+
+          {/* Login Card */}
+          <div className="relative z-10 w-full max-w-[424px] bg-white rounded-[18px] p-8 lg:p-9 shadow-2xl border border-white/50 space-y-5 my-auto">
+            {/* Card Logo Row */}
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <img
+                src="/ck-logo.png"
+                alt="Chehar Krupa"
+                className="w-20 h-auto object-contain"
+              />
+              <div>
+                <div className="text-lg font-extrabold text-[#1a2a3e] tracking-[1.5px] pb-0.5 border-b border-[#1a2a3e] whitespace-nowrap">
+                  CHEHAR KRUPA
+                </div>
+                <div className="text-[0.5625rem] font-medium text-[#1a2a3e] tracking-[4px] pt-1 text-center whitespace-nowrap">
+                  GROUP OF INDUSTRIES
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Main Floating Card Container */}
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8 my-auto space-y-6">
-            {/* Card Header Logo & Title */}
-            <div className="text-center space-y-2">
-              <div className="flex justify-center items-center gap-2">
-                <div className="size-8 rounded bg-[#091624] p-1 flex items-center justify-center">
-                  <img
-                    alt="Logo"
-                    src={CHEHAR_KRUPA_LOGO_URL}
-                    className="size-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
-                  />
-                </div>
-                <div className="text-left leading-none">
-                  <div className="text-xs font-bold text-[#091624] tracking-wider">
-                    CHEHAR KRUPA
-                  </div>
-                  <div className="text-[0.5625rem] font-semibold text-gray-500 uppercase tracking-widest">
-                    Group of Industries
-                  </div>
-                </div>
-              </div>
+            <h2 className="text-center text-xs font-bold text-[#1a2a3e] tracking-[2.5px] uppercase">
+              Textile Production System
+            </h2>
+            <div className="w-16 h-[2.5px] bg-[#c9a84e] mx-auto my-3" />
 
-              <div className="text-[0.6875rem] font-bold tracking-widest text-[#054d4a] uppercase pt-1">
-                Textile Production System
-              </div>
-
-              <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-[#1a2a3e]">
                 {activeTab === "signin" ? "Welcome Back" : "Request Access"}
-              </h2>
-              <p className="text-xs text-gray-500">
+              </h3>
+              <p className="text-xs text-[#8a8f9c] mt-0.5">
                 {activeTab === "signin"
                   ? "Sign in to the Textile Production System"
-                  : "Submit registration details for Admin review"}
+                  : "Submit details for Admin authorization"}
               </p>
             </div>
 
@@ -316,21 +314,21 @@ function AuthPage() {
                   e.preventDefault();
                   signIn();
                 }}
-                className="space-y-4"
+                className="space-y-4 pt-2"
               >
                 {/* Email Address */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-semibold text-gray-700">
+                  <Label htmlFor="email" className="block text-xs font-medium text-[#2a3040]">
                     Email Address
                   </Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#a0a6b2]" />
                     <Input
                       id="email"
                       type="email"
                       required
                       placeholder="Enter your email address"
-                      className="pl-9 h-11 text-xs border-gray-300 focus:border-[#054d4a] focus:ring-[#054d4a]"
+                      className="pl-10 h-11 text-xs border-[#e2e4ea] bg-[#f7f8fa] text-[#1a2a3e] rounded-xl focus:border-[#1a7d6a] focus:ring-[#1a7d6a]/20"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
@@ -339,24 +337,24 @@ function AuthPage() {
 
                 {/* Password */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="password" className="text-xs font-semibold text-gray-700">
+                  <Label htmlFor="password" className="block text-xs font-medium text-[#2a3040]">
                     Password
                   </Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#a0a6b2]" />
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       required
                       placeholder="Enter your password"
-                      className="pl-9 pr-9 h-11 text-xs border-gray-300 focus:border-[#054d4a] focus:ring-[#054d4a]"
+                      className="pl-10 pr-10 h-11 text-xs border-[#e2e4ea] bg-[#f7f8fa] text-[#1a2a3e] rounded-xl focus:border-[#1a7d6a] focus:ring-[#1a7d6a]/20"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a0a6b2] hover:text-[#1a2a3e]"
                     >
                       {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -367,48 +365,47 @@ function AuthPage() {
                 <Button
                   type="submit"
                   disabled={busy}
-                  className="w-full h-11 bg-[#054d4a] hover:bg-[#006666] text-white font-bold text-sm rounded-lg flex justify-center items-center gap-2 transition-all shadow-md mt-2"
+                  className="w-full h-11 bg-gradient-to-r from-[#1a7d6a] to-[#14695a] hover:opacity-95 text-white font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md mt-4"
                 >
                   <span>{busy ? "Signing in..." : "Sign In"}</span>
                   <ArrowRight className="size-4" />
                 </Button>
 
-                {/* OR Divider */}
-                <div className="relative my-4 flex items-center justify-center">
-                  <div className="border-t border-gray-200 w-full" />
-                  <span className="bg-white px-3 text-[0.6875rem] text-gray-400 uppercase font-mono absolute">
-                    or
-                  </span>
+                {/* Divider */}
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-[#e2e4ea]" />
+                  <span className="text-xs text-[#a0a6b2]">or</span>
+                  <div className="flex-1 h-px bg-[#e2e4ea]" />
                 </div>
 
                 {/* Footer Quick Links */}
-                <div className="flex items-center justify-center gap-4 text-xs font-medium text-gray-600 pt-1">
+                <div className="flex items-center justify-center gap-3 text-xs font-medium">
                   <button
                     type="button"
                     onClick={() => setForgotModalOpen(true)}
-                    className="hover:text-[#054d4a] flex items-center gap-1 transition-colors"
+                    className="text-[#1a7d6a] hover:underline flex items-center gap-1.5 px-3 py-1"
                   >
-                    <Lock className="size-3 text-gray-500" /> Forgot Password?
+                    <Lock className="size-3.5 text-[#1a7d6a]" />
+                    Forgot Password?
                   </button>
-
-                  <span className="text-gray-300">|</span>
-
+                  <div className="w-px h-4 bg-[#dfe1e6]" />
                   <button
                     type="button"
                     onClick={() => setActiveTab("request")}
-                    className="hover:text-[#054d4a] flex items-center gap-1 font-bold text-[#054d4a] transition-colors"
+                    className="text-[#1a7d6a] hover:underline flex items-center gap-1.5 px-3 py-1 font-semibold"
                   >
-                    <UserPlus className="size-3" /> Request Access
+                    <UserPlus className="size-3.5 text-[#1a7d6a]" />
+                    Request Access
                   </button>
                 </div>
               </form>
             )}
 
-            {/* TAB 2: REQUEST ACCESS FORM (WORKFLOW B) */}
+            {/* TAB 2: REQUEST ACCESS VIEW (WORKFLOW B) */}
             {activeTab === "request" && (
-              <div className="space-y-4">
+              <div className="space-y-4 pt-2">
                 {submittedSuccess ? (
-                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2 text-center">
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2 text-center">
                     <div className="flex justify-center text-amber-600">
                       <CheckCircle2 className="size-8" />
                     </div>
@@ -422,7 +419,7 @@ function AuthPage() {
                         setSubmittedSuccess(false);
                         setActiveTab("signin");
                       }}
-                      className="mt-2 text-xs bg-[#054d4a] text-white"
+                      className="mt-2 text-xs bg-[#1a7d6a] text-white rounded-lg"
                     >
                       Return to Sign In
                     </Button>
@@ -431,21 +428,21 @@ function AuthPage() {
                   <form onSubmit={handleRequestAccess} className="space-y-3 text-xs">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-xs font-semibold">First Name *</Label>
+                        <Label className="text-xs font-medium text-[#2a3040]">First Name *</Label>
                         <Input
                           required
                           placeholder="First Name"
-                          className="h-8 text-xs"
+                          className="h-9 text-xs bg-[#f7f8fa]"
                           value={reqFirstName}
                           onChange={(e) => setReqFirstName(e.target.value)}
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Last Name *</Label>
+                        <Label className="text-xs font-medium text-[#2a3040]">Last Name *</Label>
                         <Input
                           required
                           placeholder="Last Name"
-                          className="h-8 text-xs"
+                          className="h-9 text-xs bg-[#f7f8fa]"
                           value={reqLastName}
                           onChange={(e) => setReqLastName(e.target.value)}
                         />
@@ -453,12 +450,12 @@ function AuthPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Email Address *</Label>
+                      <Label className="text-xs font-medium text-[#2a3040]">Email Address *</Label>
                       <Input
                         required
                         type="email"
-                        placeholder="name@company.com"
-                        className="h-8 text-xs font-mono"
+                        placeholder="name@sckt.com"
+                        className="h-9 text-xs font-mono bg-[#f7f8fa]"
                         value={reqEmail}
                         onChange={(e) => setReqEmail(e.target.value)}
                       />
@@ -466,21 +463,21 @@ function AuthPage() {
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Mobile Number *</Label>
+                        <Label className="text-xs font-medium text-[#2a3040]">Mobile Number *</Label>
                         <Input
                           required
                           placeholder="+91 98765 43210"
-                          className="h-8 text-xs font-mono"
+                          className="h-9 text-xs font-mono bg-[#f7f8fa]"
                           value={reqMobile}
                           onChange={(e) => setReqMobile(e.target.value)}
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Employee ID *</Label>
+                        <Label className="text-xs font-medium text-[#2a3040]">Employee ID *</Label>
                         <Input
                           required
                           placeholder="EMP-104"
-                          className="h-8 text-xs font-mono"
+                          className="h-9 text-xs font-mono bg-[#f7f8fa]"
                           value={reqEmployeeId}
                           onChange={(e) => setReqEmployeeId(e.target.value)}
                         />
@@ -489,9 +486,9 @@ function AuthPage() {
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Department *</Label>
+                        <Label className="text-xs font-medium text-[#2a3040]">Department *</Label>
                         <Select value={reqDepartment} onValueChange={setReqDepartment}>
-                          <SelectTrigger className="h-8 text-xs">
+                          <SelectTrigger className="h-9 text-xs bg-[#f7f8fa]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -507,9 +504,9 @@ function AuthPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <Label className="text-xs font-semibold">Requested Role *</Label>
+                        <Label className="text-xs font-medium text-[#2a3040]">Requested Role *</Label>
                         <Select value={reqRoleId} onValueChange={setReqRoleId}>
-                          <SelectTrigger className="h-8 text-xs">
+                          <SelectTrigger className="h-9 text-xs bg-[#f7f8fa]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -524,11 +521,11 @@ function AuthPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Reason for Access *</Label>
+                      <Label className="text-xs font-medium text-[#2a3040]">Reason for Access *</Label>
                       <Textarea
                         required
-                        placeholder="Specify your operational responsibilities requiring access..."
-                        className="text-xs min-h-[50px] resize-none"
+                        placeholder="Specify operational responsibilities requiring access..."
+                        className="text-xs min-h-[50px] resize-none bg-[#f7f8fa]"
                         value={reqReason}
                         onChange={(e) => setReqReason(e.target.value)}
                       />
@@ -539,13 +536,13 @@ function AuthPage() {
                         type="button"
                         variant="outline"
                         onClick={() => setActiveTab("signin")}
-                        className="h-9 text-xs flex-1"
+                        className="h-9 text-xs flex-1 rounded-xl"
                       >
                         Cancel
                       </Button>
                       <Button
                         type="submit"
-                        className="h-9 bg-[#054d4a] hover:bg-[#006666] text-white font-bold text-xs flex-1 gap-1"
+                        className="h-9 bg-[#1a7d6a] hover:bg-[#14695a] text-white font-semibold text-xs flex-1 gap-1.5 rounded-xl"
                       >
                         <UserPlus className="size-3.5" /> Submit Request
                       </Button>
@@ -554,68 +551,43 @@ function AuthPage() {
                 )}
               </div>
             )}
-
-            {/* System Status Bar inside Floating Card */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-[0.6875rem]">
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-medium text-gray-700">
-                  System Status: <span className="font-bold text-emerald-700">Online</span>
-                </span>
-              </div>
-              <div className="text-gray-500 font-medium">
-                Environment: <span className="font-bold text-gray-700">Production</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full text-center text-[0.6875rem] text-gray-400">
-            Shree Chehar Krupa Textile Platform
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* BOTTOM FULL-WIDTH FEATURE BANNER (4 Columns) */}
+      {/* BOTTOM FEATURE BAR (4 Columns, Pure White with Divider Borders) */}
       {/* ========================================================================= */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-        <div className="flex items-center gap-3 border-r border-gray-200/80 last:border-r-0 pr-4">
-          <div className="size-9 rounded-full bg-[#054d4a]/10 text-[#054d4a] flex items-center justify-center shrink-0">
-            <ShieldCheck className="size-5" />
-          </div>
+      <div className="bg-white border-t border-[#e8eaee] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-center gap-3.5 p-5 lg:px-7 border-b sm:border-b-0 sm:border-r border-[#eaecf0]">
+          <ShieldCheck className="size-9 text-[#1a7d6a] shrink-0" strokeWidth={1.4} />
           <div>
-            <div className="font-bold text-gray-900">Secure & Reliable</div>
-            <div className="text-[0.6875rem] text-gray-500">Enterprise Grade Security</div>
+            <div className="text-sm font-semibold text-[#1a2a3e]">Secure & Reliable</div>
+            <div className="text-xs text-[#8a8f9c]">Enterprise Grade Security</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-r border-gray-200/80 last:border-r-0 pr-4">
-          <div className="size-9 rounded-full bg-[#054d4a]/10 text-[#054d4a] flex items-center justify-center shrink-0">
-            <Database className="size-5" />
-          </div>
+        <div className="flex items-center gap-3.5 p-5 lg:px-7 border-b sm:border-b-0 lg:border-r border-[#eaecf0]">
+          <Database className="size-9 text-[#c9a84e] shrink-0" strokeWidth={1.4} />
           <div>
-            <div className="font-bold text-gray-900">Real-time Data</div>
-            <div className="text-[0.6875rem] text-gray-500">Accurate & Up-to-date</div>
+            <div className="text-sm font-semibold text-[#1a2a3e]">Real-time Data</div>
+            <div className="text-xs text-[#8a8f9c]">Accurate & Up-to-date</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-r border-gray-200/80 last:border-r-0 pr-4">
-          <div className="size-9 rounded-full bg-[#054d4a]/10 text-[#054d4a] flex items-center justify-center shrink-0">
-            <Cpu className="size-5" />
-          </div>
+        <div className="flex items-center gap-3.5 p-5 lg:px-7 border-b sm:border-b-0 sm:border-r border-[#eaecf0]">
+          <Cpu className="size-9 text-[#1a7d6a] shrink-0" strokeWidth={1.4} />
           <div>
-            <div className="font-bold text-gray-900">Integrated Operations</div>
-            <div className="text-[0.6875rem] text-gray-500">End-to-End Automation</div>
+            <div className="text-sm font-semibold text-[#1a2a3e]">Integrated Operations</div>
+            <div className="text-xs text-[#8a8f9c]">End-to-End Automation</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="size-9 rounded-full bg-[#054d4a]/10 text-[#054d4a] flex items-center justify-center shrink-0">
-            <Users className="size-5" />
-          </div>
+        <div className="flex items-center gap-3.5 p-5 lg:px-7">
+          <Users className="size-9 text-[#c9a84e] shrink-0" strokeWidth={1.4} />
           <div>
-            <div className="font-bold text-gray-900">Built for Performance</div>
-            <div className="text-[0.6875rem] text-gray-500">Scalable & Efficient</div>
+            <div className="text-sm font-semibold text-[#1a2a3e]">Built for Performance</div>
+            <div className="text-xs text-[#8a8f9c]">Scalable & Efficient</div>
           </div>
         </div>
       </div>
@@ -624,23 +596,23 @@ function AuthPage() {
       <Dialog open={forgotModalOpen} onOpenChange={setForgotModalOpen}>
         <DialogContent className="max-w-sm text-xs space-y-3">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-1.5 text-[#054d4a]">
+            <DialogTitle className="text-sm font-bold flex items-center gap-1.5 text-[#1a7d6a]">
               <HelpCircle className="size-4" /> Password Recovery Assistance
             </DialogTitle>
             <DialogDescription className="text-xs">
               Contact your System Administrator or submit a support request.
             </DialogDescription>
           </DialogHeader>
-          <div className="bg-gray-50 p-3 rounded border border-gray-200 space-y-2 text-xs">
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2 text-xs text-slate-800">
             <p>
               To reset your password, please contact the <strong>Chehar Krupa Group IT Admin</strong> or your department manager.
             </p>
-            <div className="font-mono text-[0.6875rem] bg-white p-2 rounded border border-gray-200">
-              Admin Contact: <span className="font-bold text-[#054d4a]">admin@sckt.com</span>
+            <div className="font-mono text-[0.6875rem] bg-white p-2 rounded border border-slate-200">
+              Admin Contact: <span className="font-bold text-[#1a7d6a]">admin@sckt.com</span>
             </div>
           </div>
           <DialogFooter>
-            <Button size="sm" onClick={() => setForgotModalOpen(false)} className="h-8 text-xs bg-[#054d4a] text-white">
+            <Button size="sm" onClick={() => setForgotModalOpen(false)} className="h-8 text-xs bg-[#1a7d6a] text-white">
               Close
             </Button>
           </DialogFooter>

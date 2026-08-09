@@ -56,7 +56,7 @@ export function AppShell({
         )}
       >
         <div className="flex h-11 items-center gap-2 border-b border-sidebar-border px-3">
-          <img src="/logo-ck.svg" alt="CK Monogram Logo" className="h-7 w-auto object-contain filter drop-shadow-md" />
+          <img src="/ck-logo.png" alt="Chehar Krupa Logo" className="h-7 w-auto object-contain filter drop-shadow-md" />
           {!collapsed && (
             <span className="text-sm font-bold tracking-wider text-sidebar-accent-foreground">
               SCKT

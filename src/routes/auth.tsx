@@ -8,22 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowRight, UserPlus, CheckCircle2, ShieldAlert } from "lucide-react";
+import { ArrowRight, CheckCircle2, UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — SCKT Textile ERP" },
+      { title: "SCKT ERP - Login & Access Request" },
       {
         name: "description",
-        content: "Sign in to SCKT Textile ERP platform or request access for approval.",
+        content: "Sign in to SCKT (Shree Chehar Krupa Textile) ERP platform or submit a self-registration access request.",
       },
-      { property: "og:title", content: "Sign in — SCKT Textile ERP" },
+      { property: "og:title", content: "SCKT ERP - Login" },
       {
         property: "og:description",
-        content: "Secure access to the SCKT fabric costing and manufacturing platform.",
+        content: "Shree Chehar Krupa Textile ERP platform for yarn masters, loom planning and 4-point quality inspection.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -32,16 +31,22 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+const SCKT_LOGO_URL =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCOROZcJBNncFih1msk3FhKyMnbSjuDU5JmRPgV6KwxfDYn4TQGeODwNWACbZsw9byBC3QkHjPgIaQpcEmT2VAjc_2cZunhT9ks6YBY8wdVYMf9uJV-8h_hEgKtJ9VU_8RDibsLSmjDqV0IgMeVIjAszyoUrNPUJf26imszvk0wyiTko9r6yMDtWJhDyxxFXSuNdlpYrh4K59ETgeg4fDKfhzQtVadQuNKHbybvqhnNTvFjQ10X2Q092aNSAcv3MZLLoFE";
+
 function AuthPage() {
   const navigate = useNavigate();
   const { roles, registerUserRequest } = useUserRoles();
 
-  // Sign In Form State
+  // Active Tab State
+  const [activeTab, setActiveTab] = useState<"signin" | "request">("signin");
+
+  // Sign In State
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Self-Registration Request Form State
+  // Self Registration Request State
   const [reqFirstName, setReqFirstName] = useState("");
   const [reqLastName, setReqLastName] = useState("");
   const [reqEmail, setReqEmail] = useState("");
@@ -123,108 +128,178 @@ function AuthPage() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2 text-xs">
-      <div className="hidden flex-col justify-between bg-sidebar p-10 lg:flex">
-        <div className="flex items-center gap-2">
-          <span className="grid size-7 place-items-center rounded-sm bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
-            SCKT
-          </span>
-          <span className="font-semibold text-sidebar-accent-foreground text-sm">SCKT ERP</span>
+    <div className="bg-[#f7f9fb] text-[#111827] h-screen flex flex-col md:flex-row overflow-hidden antialiased font-sans">
+      {/* Brand Side (Left, 55%) */}
+      <div className="relative w-full md:w-[55%] h-[35vh] md:h-full bg-[#162127] flex flex-col justify-between p-6 md:p-16 border-b md:border-b-0 border-[#162127] z-10">
+        {/* Header / Logo */}
+        <div className="flex items-center gap-4">
+          <img
+            alt="SCKT Logo"
+            className="h-16 md:h-20 w-auto object-contain rounded bg-white/5 p-1 border border-white/10"
+            src={SCKT_LOGO_URL}
+            onError={(e) => {
+              // Fallback logo text badge if network blocks CDN image
+              (e.target as HTMLElement).style.display = "none";
+            }}
+          />
+          <div className="text-white font-bold tracking-wider text-xl font-mono">SCKT</div>
         </div>
-        <div className="max-w-md space-y-3">
-          <h2 className="text-2xl font-semibold text-sidebar-accent-foreground">
-            Textile Fabric Costing & ERP Platform
-          </h2>
-          <p className="text-xs text-sidebar-foreground/75 leading-relaxed">
-            Integrated system of record for yarn masters, 4-point inspection, loom planning, WhatsApp bot automation, sales dispatches, and executive reporting.
+
+        {/* Main Branding Copy */}
+        <div className="mt-auto mb-auto md:mb-0 md:mt-auto space-y-4 max-w-lg">
+          <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+            SCKT <br />
+            <span className="text-xl md:text-2xl font-semibold text-gray-200 block mt-2">
+              Shree Chehar Krupa Textile
+            </span>
+          </h1>
+          <p className="text-sm md:text-base text-gray-300 leading-relaxed">
+            Enterprise Resource Planning Platform. Integrated system of record for yarn masters, 4-point inspection, loom planning, and executive reporting.
           </p>
         </div>
-        <p className="text-[0.6875rem] text-sidebar-foreground/50">
-          Internal — Confidential · SCKT ERP v3.0
-        </p>
+
+        {/* Desktop Footer Info (Hidden on Mobile) */}
+        <div className="hidden md:block mt-auto pt-8 border-t border-gray-700/50">
+          <p className="text-xs font-mono text-gray-400">
+            Internal — Confidential · Shree Chehar Krupa Textile v3.0
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center justify-center p-6 bg-background">
-        <div className="w-full max-w-sm space-y-4">
-          <div className="space-y-1">
-            <h1 className="text-base font-bold text-foreground">Sign in to SCKT ERP</h1>
-            <p className="text-xs text-muted-foreground">
+      {/* Action Side (Right, 45%) */}
+      <div className="w-full md:w-[45%] h-[65vh] md:h-full bg-[#f7f9fb] flex flex-col justify-center items-center p-6 md:p-16 relative overflow-y-auto">
+        <div className="w-full max-w-md relative z-10 space-y-6">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">
+              Sign in to SCKT
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
               Enter authorized credentials or submit an access request.
             </p>
           </div>
 
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-8 text-xs">
-              <TabsTrigger value="signin" className="h-7 text-xs">Sign in</TabsTrigger>
-              <TabsTrigger value="request" className="h-7 text-xs">Request Access</TabsTrigger>
-            </TabsList>
+          {/* Segmented Tab Control */}
+          <div className="flex p-1 bg-[#f2f4f6] rounded-lg border border-[#e5e7eb]">
+            <button
+              type="button"
+              onClick={() => setActiveTab("signin")}
+              className={`flex-1 py-2 px-4 rounded text-sm font-semibold transition-all ${
+                activeTab === "signin"
+                  ? "bg-white text-[#111827] shadow-xs"
+                  : "text-gray-600 hover:text-[#111827]"
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("request")}
+              className={`flex-1 py-2 px-4 rounded text-sm font-semibold transition-all ${
+                activeTab === "request"
+                  ? "bg-white text-[#111827] shadow-xs"
+                  : "text-gray-600 hover:text-[#111827]"
+              }`}
+            >
+              Request Access
+            </button>
+          </div>
 
-            {/* TAB 1: SIGN IN */}
-            <TabsContent value="signin" className="mt-3 space-y-3">
-              <div className="space-y-1">
-                <Label htmlFor="email" className="text-xs font-medium">Email Address</Label>
+          {/* TAB 1: SIGN IN FORM */}
+          {activeTab === "signin" && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                signIn();
+              }}
+              className="space-y-5"
+            >
+              {/* Email Input */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="block text-xs font-mono font-medium text-gray-700">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
-                  placeholder="name@weaveone.com"
-                  className="h-8 text-xs font-mono"
+                  placeholder="name@sckt.com"
+                  className="w-full bg-white border border-[#d1d5db] rounded px-4 py-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#006666] focus:ring-1 focus:ring-[#006666]/20 transition-all font-mono"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+
+              {/* Password Input */}
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="block text-xs font-mono font-medium text-gray-700">
+                  Password
+                </Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="••••••••"
-                  className="h-8 text-xs font-mono"
+                  className="w-full bg-white border border-[#d1d5db] rounded px-4 py-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#006666] focus:ring-1 focus:ring-[#006666]/20 transition-all font-mono"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              <Button className="w-full h-8 text-xs gap-1 font-bold mt-2" disabled={busy} onClick={signIn}>
-                {busy ? "Authenticating..." : "Sign in to ERP"} <ArrowRight className="size-3.5" />
-              </Button>
-            </TabsContent>
 
-            {/* TAB 2: WORKFLOW B - SELF REGISTRATION ACCESS REQUEST */}
-            <TabsContent value="request" className="mt-3 space-y-3">
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={busy}
+                className="w-full bg-[#006666] hover:bg-[#008080] text-white font-semibold py-3 px-4 rounded flex justify-center items-center gap-2 transition-all mt-6 group h-11 text-sm"
+              >
+                <span>{busy ? "Authenticating..." : "Sign in to ERP"}</span>
+                <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </form>
+          )}
+
+          {/* TAB 2: REQUEST ACCESS FORM (WORKFLOW B) */}
+          {activeTab === "request" && (
+            <div className="space-y-4">
               {submittedSuccess ? (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 p-4 space-y-2 text-center">
-                  <div className="flex justify-center text-amber-600 dark:text-amber-400">
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2 text-center">
+                  <div className="flex justify-center text-amber-600">
                     <CheckCircle2 className="size-8" />
                   </div>
-                  <h3 className="font-bold text-amber-900 dark:text-amber-200 text-sm">Access Request Submitted!</h3>
-                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                  <h3 className="font-bold text-amber-900 text-sm">Access Request Submitted!</h3>
+                  <p className="text-xs text-amber-800">
                     Your registration request is currently <span className="font-bold underline">PENDING APPROVAL</span> by an authorized System Admin.
                   </p>
-                  <div className="text-[0.6875rem] text-muted-foreground pt-2">
+                  <p className="text-[0.6875rem] text-gray-600 pt-1">
                     You will not be able to access protected ERP modules until your request is reviewed and approved.
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => setSubmittedSuccess(false)} className="mt-2 text-xs">
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSubmittedSuccess(false)}
+                    className="mt-2 text-xs"
+                  >
                     Submit Another Request
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleRequestAccess} className="space-y-2.5">
+                <form onSubmit={handleRequestAccess} className="space-y-3 text-xs">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-[0.6875rem] font-medium">First Name *</Label>
+                      <Label className="text-xs font-medium text-gray-700">First Name *</Label>
                       <Input
                         required
                         placeholder="John"
-                        className="h-7 text-xs"
+                        className="h-8 text-xs bg-white"
                         value={reqFirstName}
                         onChange={(e) => setReqFirstName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[0.6875rem] font-medium">Last Name *</Label>
+                      <Label className="text-xs font-medium text-gray-700">Last Name *</Label>
                       <Input
                         required
                         placeholder="Doe"
-                        className="h-7 text-xs"
+                        className="h-8 text-xs bg-white"
                         value={reqLastName}
                         onChange={(e) => setReqLastName(e.target.value)}
                       />
@@ -232,12 +307,12 @@ function AuthPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-[0.6875rem] font-medium">Email Address *</Label>
+                    <Label className="text-xs font-medium text-gray-700">Email Address *</Label>
                     <Input
                       required
                       type="email"
-                      placeholder="john.doe@company.com"
-                      className="h-7 text-xs font-mono"
+                      placeholder="name@sckt.com"
+                      className="h-8 text-xs font-mono bg-white"
                       value={reqEmail}
                       onChange={(e) => setReqEmail(e.target.value)}
                     />
@@ -245,21 +320,21 @@ function AuthPage() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-[0.6875rem] font-medium">Mobile Number *</Label>
+                      <Label className="text-xs font-medium text-gray-700">Mobile Number *</Label>
                       <Input
                         required
                         placeholder="+91 98765 43210"
-                        className="h-7 text-xs font-mono"
+                        className="h-8 text-xs font-mono bg-white"
                         value={reqMobile}
                         onChange={(e) => setReqMobile(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[0.6875rem] font-medium">Employee ID *</Label>
+                      <Label className="text-xs font-medium text-gray-700">Employee ID *</Label>
                       <Input
                         required
                         placeholder="EMP-104"
-                        className="h-7 text-xs font-mono"
+                        className="h-8 text-xs font-mono bg-white"
                         value={reqEmployeeId}
                         onChange={(e) => setReqEmployeeId(e.target.value)}
                       />
@@ -268,9 +343,9 @@ function AuthPage() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-[0.6875rem] font-medium">Department *</Label>
+                      <Label className="text-xs font-medium text-gray-700">Department *</Label>
                       <Select value={reqDepartment} onValueChange={setReqDepartment}>
-                        <SelectTrigger className="h-7 text-xs">
+                        <SelectTrigger className="h-8 text-xs bg-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -286,9 +361,9 @@ function AuthPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-[0.6875rem] font-medium">Requested Role *</Label>
+                      <Label className="text-xs font-medium text-gray-700">Requested Role *</Label>
                       <Select value={reqRoleId} onValueChange={setReqRoleId}>
-                        <SelectTrigger className="h-7 text-xs">
+                        <SelectTrigger className="h-8 text-xs bg-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -303,27 +378,37 @@ function AuthPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-[0.6875rem] font-medium">Reason for Access *</Label>
+                    <Label className="text-xs font-medium text-gray-700">Reason for Access *</Label>
                     <Textarea
                       required
                       placeholder="Specify your operational responsibilities requiring access..."
-                      className="text-xs min-h-[50px] resize-none"
+                      className="text-xs min-h-[50px] resize-none bg-white"
                       value={reqReason}
                       onChange={(e) => setReqReason(e.target.value)}
                     />
                   </div>
 
-                  <Button type="submit" className="w-full h-8 text-xs font-bold gap-1 mt-1">
+                  <Button
+                    type="submit"
+                    className="w-full h-9 bg-[#006666] hover:bg-[#008080] text-white font-semibold text-xs gap-1.5 mt-2"
+                  >
                     <UserPlus className="size-3.5" /> Submit Access Request
                   </Button>
 
-                  <p className="text-[0.625rem] text-muted-foreground text-center">
+                  <p className="text-[0.625rem] text-gray-500 text-center">
                     Submitted requests remain in <span className="font-semibold">PENDING APPROVAL</span> until reviewed by an authorized Admin.
                   </p>
                 </form>
               )}
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
+
+          {/* Mobile Footer Info */}
+          <div className="md:hidden mt-8 text-center pt-4 border-t border-gray-200">
+            <p className="text-[0.6875rem] text-gray-400 font-mono">
+              Internal — Confidential · Shree Chehar Krupa Textile v3.0
+            </p>
+          </div>
         </div>
       </div>
     </div>

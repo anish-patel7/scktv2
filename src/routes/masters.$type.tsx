@@ -105,17 +105,6 @@ function MasterPage() {
   const isMaterial = type === "material";
   const isParty = type === "party";
 
-  if (isParty) {
-    return (
-      <AppShell
-        title="Party Master"
-        breadcrumb={[{ label: "Masters" }, { label: "Party" }]}
-      >
-        <PartyMasterView />
-      </AppShell>
-    );
-  }
-
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GenericMasterItem | null>(null);
@@ -131,6 +120,7 @@ function MasterPage() {
   // Query master records with local fallback
   const { data: dbData = [] } = useQuery({
     queryKey: ["master", type],
+    enabled: !isParty,
     queryFn: async () => {
       try {
         if (isMaterial) {
@@ -186,6 +176,17 @@ function MasterPage() {
       return code.includes(q) || name.includes(q) || desc.includes(q);
     });
   }, [dbData, search]);
+
+  if (isParty) {
+    return (
+      <AppShell
+        title="Party Master"
+        breadcrumb={[{ label: "Masters" }, { label: "Party" }]}
+      >
+        <PartyMasterView />
+      </AppShell>
+    );
+  }
 
   const handleOpenCreate = () => {
     setEditingItem(null);

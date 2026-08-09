@@ -38,6 +38,7 @@ import { Route as SystemAuditRouteImport } from './routes/system.audit'
 import { Route as SystemBackupRouteImport } from './routes/system.backup'
 import { Route as SystemSettingsRouteImport } from './routes/system.settings'
 import { Route as SystemUsersRouteImport } from './routes/system.users'
+import { Route as SystemWhatsappRouteImport } from './routes/system.whatsapp'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -184,6 +185,11 @@ const SystemUsersRoute = SystemUsersRouteImport.update({
   path: '/system/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SystemWhatsappRoute = SystemWhatsappRouteImport.update({
+  id: '/system/whatsapp',
+  path: '/system/whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/system/backup': typeof SystemBackupRoute
   '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
+  '/system/whatsapp': typeof SystemWhatsappRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/system/backup': typeof SystemBackupRoute
   '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
+  '/system/whatsapp': typeof SystemWhatsappRoute
   '/cost-sheets': typeof CostSheetsIndexRoute
 }
 export interface FileRoutesById {
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/system/backup': typeof SystemBackupRoute
   '/system/settings': typeof SystemSettingsRoute
   '/system/users': typeof SystemUsersRoute
+  '/system/whatsapp': typeof SystemWhatsappRoute
   '/cost-sheets/': typeof CostSheetsIndexRoute
 }
 export interface FileRouteTypes {
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/system/backup'
     | '/system/settings'
     | '/system/users'
+    | '/system/whatsapp'
     | '/cost-sheets/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/system/backup'
     | '/system/settings'
     | '/system/users'
+    | '/system/whatsapp'
     | '/cost-sheets'
   id:
     | '__root__'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/system/backup'
     | '/system/settings'
     | '/system/users'
+    | '/system/whatsapp'
     | '/cost-sheets/'
   fileRoutesById: FileRoutesById
 }
@@ -404,6 +416,7 @@ export interface RootRouteChildren {
   SystemBackupRoute: typeof SystemBackupRoute
   SystemSettingsRoute: typeof SystemSettingsRoute
   SystemUsersRoute: typeof SystemUsersRoute
+  SystemWhatsappRoute: typeof SystemWhatsappRoute
   CostSheetsIndexRoute: typeof CostSheetsIndexRoute
 }
 
@@ -612,6 +625,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/system/whatsapp': {
+      id: '/system/whatsapp'
+      path: '/system/whatsapp'
+      fullPath: '/system/whatsapp'
+      preLoaderRoute: typeof SystemWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -644,8 +664,19 @@ const rootRouteChildren: RootRouteChildren = {
   SystemBackupRoute: SystemBackupRoute,
   SystemSettingsRoute: SystemSettingsRoute,
   SystemUsersRoute: SystemUsersRoute,
+  SystemWhatsappRoute: SystemWhatsappRoute,
   CostSheetsIndexRoute: CostSheetsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

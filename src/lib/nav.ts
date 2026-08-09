@@ -50,25 +50,25 @@ export const NAV: NavGroup[] = [
   {
     label: "Inventory",
     items: [
-      { label: "Yarn Store", to: "/inventory/yarn", phase: 4 },
-      { label: "Beam Store", to: "/inventory/beam", phase: 4 },
-      { label: "Grey / Finished", to: "/inventory/fabric", phase: 4 },
+      { label: "Yarn Store", to: "/inventory/yarn" },
+      { label: "Beam Store", to: "/inventory/beam" },
+      { label: "Grey / Finished", to: "/inventory/fabric" },
     ],
   },
   {
     label: "Sales",
     items: [
-      { label: "Customers", to: "/sales/customers", phase: 5 },
-      { label: "Quotations", to: "/sales/quotations", phase: 5 },
-      { label: "Orders & Dispatch", to: "/sales/orders", phase: 5 },
-      { label: "Outstanding", to: "/sales/outstanding", phase: 5 },
+      { label: "Customers", to: "/sales/customers" },
+      { label: "Quotations", to: "/sales/quotations" },
+      { label: "Orders & Dispatch", to: "/sales/orders" },
+      { label: "Outstanding", to: "/sales/outstanding" },
     ],
   },
   {
     label: "Quality",
     items: [
-      { label: "Inspection", to: "/quality/inspection", phase: 6 },
-      { label: "Shade Approval", to: "/quality/shade", phase: 6 },
+      { label: "Inspection", to: "/quality/inspection" },
+      { label: "Shade Approval", to: "/quality/shade" },
     ],
   },
   {
@@ -79,12 +79,13 @@ export const NAV: NavGroup[] = [
     label: "Insights",
     items: [
       { label: "Reports", to: "/reports" },
-      { label: "Analytics", to: "/analytics", phase: 7 },
+      { label: "Analytics", to: "/analytics" },
     ],
   },
   {
     label: "System",
     items: [
+      { label: "WhatsApp Bot", to: "/system/whatsapp" },
       { label: "Users & Roles", to: "/system/users" },
       { label: "Settings", to: "/system/settings" },
       { label: "Audit History", to: "/system/audit" },

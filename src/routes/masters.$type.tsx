@@ -66,9 +66,9 @@ const SEED_GENERIC_MASTERS: Record<string, GenericMasterItem[]> = {
     { id: "sls-2", code: "SLS-002", name: "Suresh Shah", description: "Textile Representative (Mumbai Region)", active: true },
   ],
   beam_colour: [
-    { id: "bc-1", code: "BC-01", name: "Black Kota Beam Yarn", description: "Dark Navy / Black Warp Beam Yarn", active: true },
-    { id: "bc-2", code: "BC-02", name: "Banarasi Gold Beam Yarn", description: "Metallic Gold Warp Beam Yarn", active: true },
-    { id: "bc-3", code: "BC-03", name: "Royal Blue Beam Yarn", description: "Dyed Royal Blue Warp Beam Yarn", active: true },
+    { id: "bc-1", code: "BYM-01", name: "Black Kota Beam Yarn", description: "Dark Navy / Black Warp Beam Yarn", active: true },
+    { id: "bc-2", code: "BYM-02", name: "Banarasi Gold Beam Yarn", description: "Metallic Gold Warp Beam Yarn", active: true },
+    { id: "bc-3", code: "BYM-03", name: "Royal Blue Beam Yarn", description: "Dyed Royal Blue Warp Beam Yarn", active: true },
   ],
   process: [
     { id: "prc-1", code: "PRC-01", name: "Butta Cutting & Processing", description: "Standard Rate ₹2.00 / cut", active: true },
@@ -190,8 +190,10 @@ function MasterPage() {
 
   const handleOpenCreate = () => {
     setEditingItem(null);
+    const prefix = type === "beam_colour" ? "BYM" : type.slice(0, 3).toUpperCase();
+    const padLen = type === "beam_colour" || type === "loom" || type === "process" ? 2 : 3;
     setForm({
-      code: `${type.slice(0, 3).toUpperCase()}-${String(dbData.length + 1).padStart(3, "0")}`,
+      code: `${prefix}-${String(dbData.length + 1).padStart(padLen, "0")}`,
       name: "",
       description: "",
       denier: "",

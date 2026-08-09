@@ -41,10 +41,10 @@ export const NAV: NavGroup[] = [
   {
     label: "Production",
     items: [
-      { label: "Production Orders", to: "/production/orders", phase: 3 },
-      { label: "Loom Planning", to: "/production/looms", phase: 3 },
-      { label: "Job Cards", to: "/production/job-cards", phase: 3 },
-      { label: "Daily Production", to: "/production/daily", phase: 3 },
+      { label: "Production Orders", to: "/production/orders" },
+      { label: "Loom Planning", to: "/production/looms" },
+      { label: "Job Cards", to: "/production/job-cards" },
+      { label: "Daily Production", to: "/production/daily" },
     ],
   },
   {

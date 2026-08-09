@@ -177,6 +177,9 @@ export function AppShell({
             className="size-7"
             aria-label="Sign out"
             onClick={async () => {
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("weaveone_demo_user");
+              }
               await supabase.auth.signOut();
               navigate({ to: "/auth" });
             }}

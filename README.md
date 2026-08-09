@@ -1,26 +1,19 @@
-# Pixel Perfect
+# WeaveOne Textile ERP — Design & Costing Platform
 
-Implement exactly the screenshot and nothing else
+A comprehensive textile fabric costing and design management web application.
 
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://pixel-perfect-render-4435.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/72e03ca5-9648-428d-a3b1-3487b5aeef1d).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+## Features
+- **Design Management (M18)**: Design Master, Program Matching horizontal feeder grids, Image Swatches Gallery, and Feeder Cross-Reference.
+- **Fabric Costing Engine**: Exact workbook calculations for Warp, Weft, Material Summary, Wastage (10%), Process Charges (Butta, RFD), Card Costing ($(17226 \times 0.4)/39.37$), and Final Selling Rate / Cost per metre / piece.
+- **Yarn Material Master**: 28 pre-seeded yarn materials with deniers and GST rates per kg.
+- **Printable A4 Cost Sheet**: One-click A4 printing and PDF export with approval signature blocks.
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Local development requires Node.js (v18+).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
 npm i
 npm run dev
 ```
+Open [http://localhost:8080](http://localhost:8080) to check the application.

@@ -37,32 +37,42 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+
+  const handleResetDemo = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("weaveone_demo_user", "true");
+      window.location.href = "/";
+    }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 text-xs font-sans">
+      <div className="max-w-md text-center space-y-4 rounded-lg border border-border bg-card p-6 shadow-md">
+        <h1 className="text-lg font-bold tracking-tight text-foreground">
           This page didn't load
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="text-xs text-muted-foreground font-mono bg-muted/40 p-2.5 rounded border border-border/60 text-left overflow-x-auto max-h-32">
+          {error?.message || String(error) || "Unexpected runtime exception"}
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2 pt-2">
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Try again
           </button>
+          <button
+            onClick={handleResetDemo}
+            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            ⚡ Instant Demo Access
+          </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
           >
             Go home
           </a>
@@ -77,21 +87,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "WeaveOne ERP — Textile Design & Costing Platform" },
+      { name: "description", content: "Comprehensive textile design management and fabric costing system." },
+      { name: "author", content: "WeaveOne" },
+      { property: "og:title", content: "WeaveOne ERP — Textile Design & Costing Platform" },
+      { property: "og:description", content: "Comprehensive textile design management and fabric costing system." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "shortcut icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
   }),
   shellComponent: RootShell,

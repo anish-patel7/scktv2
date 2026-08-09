@@ -36,6 +36,8 @@ export type CostInputs = {
   number_of_cards: number;
   kg_divisor: number;
   card_divisor: number;
+  markup_pct?: number | undefined;
+  manual_sale_rate?: number | undefined;
 };
 
 export const isBlankLine = (l: CostLine) =>
@@ -75,6 +77,12 @@ export function computeCostSheet(input: CostInputs) {
     : 0;
   const finalCost = materialWithWastage + processCost + cardCost;
 
+  const markupPct = input.markup_pct ?? 0;
+  const suggestedSaleRate = finalCost * (1 + markupPct / 100);
+  const saleRate = input.manual_sale_rate && input.manual_sale_rate > 0 ? input.manual_sale_rate : finalCost;
+  const grossProfit = saleRate - finalCost;
+  const grossMarginPct = saleRate > 0 ? (grossProfit / saleRate) * 100 : 0;
+
   return {
     warpKg,
     weftKg,
@@ -89,7 +97,10 @@ export function computeCostSheet(input: CostInputs) {
     processCost,
     cardCost,
     finalCost,
-    saleRate: finalCost,
+    saleRate,
+    suggestedSaleRate,
+    grossProfit,
+    grossMarginPct,
   };
 }
 
@@ -97,3 +108,5 @@ export const fmt = (n: number, dp = 2) =>
   Number.isFinite(n)
     ? n.toLocaleString("en-IN", { minimumFractionDigits: dp, maximumFractionDigits: dp })
     : "—";
+
+export const fmtCurr = (n: number) => `₹${fmt(n, 2)}`;

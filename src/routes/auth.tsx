@@ -17,26 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import {
-  ArrowRight,
-  CheckCircle2,
-  UserPlus,
-  User,
-  Lock,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  Database,
-  Cpu,
-  Users,
-  HelpCircle,
-  LayoutGrid,
-  Sparkles,
-  BarChart3,
-  Package,
-  Truck,
-  Palette,
-} from "lucide-react";
+import { CheckCircle2, UserPlus, HelpCircle } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -154,158 +135,121 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0d1829] font-sans antialiased text-white selection:bg-[#c9a84e]/30">
-      <div className="flex flex-1 flex-col lg:flex-row min-h-0">
+    <div style={{ display: "flex", minHeight: "100vh", flexDirection: "column", fontFamily: "'Poppins', sans-serif", background: "#0d1829" }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }} className="flex-col lg:flex-row">
         {/* ========================================================================= */}
-        {/* LEFT PANEL (50% Width, Dark Navy Blue Theme) */}
+        {/* LEFT PANEL (100% Exact Copy from Login page design code/Login Page.dc.html) */}
         {/* ========================================================================= */}
-        <div className="w-full lg:w-1/2 relative bg-[#0d1829] overflow-hidden flex flex-col justify-between p-8 lg:p-14 border-b lg:border-b-0 border-[#1c2c44]">
-          {/* Unsplash Factory/Textile Overlay */}
-          <div
-            className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-15"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80')",
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0d1829]/95 via-[#0d1829]/85 to-[#0d1829]/92 pointer-events-none" />
+        <div style={{ width: "50%", position: "relative", background: "#0d1829", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "52px 60px 40px" }} className="w-full lg:w-1/2">
+          <div style={{ position: "absolute", inset: 0, background: "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80') center/cover no-repeat", opacity: 0.15 }}></div>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(13,24,41,0.95) 0%, rgba(13,24,41,0.82) 50%, rgba(13,24,41,0.92) 100%)" }}></div>
 
-          <div className="relative z-10 space-y-6">
-            {/* Logo Header Row */}
-            <div className="flex items-center gap-5 mb-8">
-              <img
-                src="/ck-logo.png"
-                alt="Chehar Krupa"
-                className="w-32 lg:w-36 h-auto object-contain filter drop-shadow-md"
-              />
-              <div>
-                <div className="text-2xl lg:text-3xl font-extrabold text-[#d5aa4d] tracking-[3px] leading-tight pb-1 border-b-[2.5px] border-[#d5aa4d] whitespace-nowrap">
-                  CHEHAR KRUPA
-                </div>
-                <div className="text-xs lg:text-sm font-medium text-white tracking-[7px] pt-1.5 text-center whitespace-nowrap">
-                  GROUP OF INDUSTRIES
-                </div>
+          <div style={{ position: "relative", zIndex: 1, alignSelf: "center" }}>
+            {/* Logo row */}
+            <div style={{ display: "flex", alignItems: "center", gap: "22px", marginBottom: "52px", alignSelf: "center", textAlign: "center", marginRight: "0px", justifyContent: "center" }}>
+              <img src="/ck-logo.png" alt="Chehar Krupa" style={{ width: "clamp(84px, 9vw, 148px)", height: "auto", display: "block", flexShrink: 0, alignSelf: "center", textAlign: "center" }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "clamp(22px, 2.45vw, 40px)", fontWeight: 800, color: "#d5aa4d", letterSpacing: "clamp(1.5px, 0.18vw, 3px)", lineHeight: 1.05, paddingBottom: "6px", borderBottom: "2.5px solid #d5aa4d", whiteSpace: "nowrap", alignSelf: "center", textAlign: "center" }}>CHEHAR KRUPA</div>
+                <div style={{ fontSize: "clamp(10px, 1.05vw, 17px)", fontWeight: 500, color: "#ffffff", letterSpacing: "clamp(4px, 0.52vw, 8.5px)", lineHeight: 1, paddingTop: "8px", textAlign: "center", whiteSpace: "nowrap" }}>GROUP OF INDUSTRIES</div>
               </div>
             </div>
 
-            {/* Main Title */}
-            <h1 className="text-2xl lg:text-4xl font-extrabold text-white leading-tight tracking-wider text-center lg:text-left">
-              TEXTILE PRODUCTION <br />
-              <span className="text-[#c9a84e] font-bold block mt-1">
-                & MANAGEMENT SYSTEM
-              </span>
+            <h1 style={{ fontSize: "40px", fontWeight: 800, color: "#ffffff", lineHeight: 1.18, letterSpacing: "1.5px", maxWidth: "6000px", textAlign: "center" }}>
+              TEXTILE PRODUCTION<br />&amp;&nbsp;<br />MANAGEMENT SYSTEM
             </h1>
 
-            <div className="w-14 h-1 bg-[#c9a84e] my-6" />
+            <div style={{ width: "52px", height: "4px", background: "#c9a84e", margin: "28px 0 24px" }}></div>
 
-            <p className="text-sm lg:text-base text-white/70 leading-relaxed max-w-xl">
+            <p style={{ fontSize: "15.5px", color: "rgba(255,255,255,0.6)", lineHeight: 1.75, maxWidth: "600px" }}>
               Integrated platform for managing textile production, costing, inventory, quality, sales and business operations.
             </p>
 
-            {/* Feature 2x3 Grid */}
-            <div className="grid grid-cols-2 gap-4 max-w-lg pt-4">
-              <div className="flex items-center gap-3.5">
-                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
-                  <LayoutGrid className="size-5 text-[#c9a84e]" />
+            {/* Feature grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 48px", marginTop: "40px", maxWidth: "500px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{ width: "46px", height: "46px", minWidth: "46px", borderRadius: "10px", background: "rgba(201,168,78,0.1)", border: "1px solid rgba(201,168,78,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
                 </div>
-                <span className="text-xs font-medium text-white/90">Production Management</span>
+                <span style={{ fontSize: "13.5px", fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>Production Management</span>
               </div>
 
-              <div className="flex items-center gap-3.5">
-                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
-                  <ShieldCheck className="size-5 text-[#c9a84e]" />
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{ width: "46px", height: "46px", minWidth: "46px", borderRadius: "10px", background: "rgba(201,168,78,0.1)", border: "1px solid rgba(201,168,78,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.6"><circle cx="12" cy="12" r="9"></circle><path d="M8 12l3 3 5-5"></path></svg>
                 </div>
-                <span className="text-xs font-medium text-white/90">Quality Control</span>
+                <span style={{ fontSize: "13.5px", fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>Quality Control</span>
               </div>
 
-              <div className="flex items-center gap-3.5">
-                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
-                  <Palette className="size-5 text-[#c9a84e]" />
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{ width: "46px", height: "46px", minWidth: "46px", borderRadius: "10px", background: "rgba(201,168,78,0.1)", border: "1px solid rgba(201,168,78,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.6"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 3v18"></path></svg>
                 </div>
-                <span className="text-xs font-medium text-white/90">Design & Costing</span>
+                <span style={{ fontSize: "13.5px", fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>Design &amp; Costing</span>
               </div>
 
-              <div className="flex items-center gap-3.5">
-                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
-                  <Truck className="size-5 text-[#c9a84e]" />
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{ width: "46px", height: "46px", minWidth: "46px", borderRadius: "10px", background: "rgba(201,168,78,0.1)", border: "1px solid rgba(201,168,78,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.6"><rect x="2" y="7" width="15" height="10" rx="1.5"></rect><path d="M17 10l5 2.5L17 15"></path></svg>
                 </div>
-                <span className="text-xs font-medium text-white/90">Sales & Dispatch</span>
+                <span style={{ fontSize: "13.5px", fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>Sales &amp; Dispatch</span>
               </div>
 
-              <div className="flex items-center gap-3.5">
-                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
-                  <Package className="size-5 text-[#c9a84e]" />
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{ width: "46px", height: "46px", minWidth: "46px", borderRadius: "10px", background: "rgba(201,168,78,0.1)", border: "1px solid rgba(201,168,78,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.6"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"></path></svg>
                 </div>
-                <span className="text-xs font-medium text-white/90">Inventory Management</span>
+                <span style={{ fontSize: "13.5px", fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>Inventory Management</span>
               </div>
 
-              <div className="flex items-center gap-3.5">
-                <div className="size-11 min-w-[44px] rounded-xl bg-[#c9a84e]/10 border border-[#c9a84e]/25 flex items-center justify-center">
-                  <BarChart3 className="size-5 text-[#c9a84e]" />
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{ width: "46px", height: "46px", minWidth: "46px", borderRadius: "10px", background: "rgba(201,168,78,0.1)", border: "1px solid rgba(201,168,78,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.6"><path d="M18 20V10M12 20V4M6 20v-6"></path></svg>
                 </div>
-                <span className="text-xs font-medium text-white/90">Reports & Analytics</span>
+                <span style={{ fontSize: "13.5px", fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>Reports &amp; Analytics</span>
               </div>
             </div>
           </div>
 
           {/* Left Footer Security Tag */}
-          <div className="relative z-10 pt-8 border-t border-white/10 mt-8 text-center space-y-2">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-[#c9a84e] tracking-[2.5px] uppercase">
-              <Lock className="size-4" /> Internal Use Only
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "24px", marginTop: "36px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "18px", flexDirection: "column" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.8"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "#c9a84e", letterSpacing: "2.5px", textAlign: "center" }}>INTERNAL USE ONLY</span>
+              </div>
+              <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", lineHeight: 1.6, textAlign: "center" }}>
+                © 2024 Chehar Krupa Group of Industries.<br />All rights reserved.
+              </p>
             </div>
-            <p className="text-xs text-white/40 font-mono">
-              © 2024 Chehar Krupa Group of Industries. All rights reserved.
-            </p>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* RIGHT PANEL (50% Width, Light Soft Blue/Grey Card Overlay Theme) */}
+        {/* RIGHT PANEL (100% Exact Copy from Login page design code/Login Page.dc.html) */}
         {/* ========================================================================= */}
-        <div className="w-full lg:w-1/2 relative bg-[#d8dbe1] flex items-center justify-center p-6 lg:p-12 overflow-y-auto">
-          <div
-            className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-5"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80')",
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#dcdfdf]/95 to-[#d2d5dc]/98 pointer-events-none" />
+        <div style={{ width: "50%", position: "relative", background: "#d8dbe1", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }} className="w-full lg:w-1/2">
+          <div style={{ position: "absolute", inset: 0, background: "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80') center/cover no-repeat", opacity: 0.06 }}></div>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(220,223,230,0.95) 0%, rgba(210,213,220,0.98) 100%)" }}></div>
 
           {/* Login Card */}
-          <div className="relative z-10 w-full max-w-[424px] bg-white rounded-[18px] p-8 lg:p-9 shadow-2xl border border-white/50 space-y-5 my-auto">
-            {/* Card Logo Row */}
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <img
-                src="/ck-logo.png"
-                alt="Chehar Krupa"
-                className="w-20 h-auto object-contain"
-              />
+          <div data-signin-card="1" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: "424px", background: "#ffffff", borderRadius: "18px", padding: "36px 36px 28px", boxShadow: "0 12px 48px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)" }}>
+            {/* Card Logo */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "18px" }}>
+              <img src="/ck-logo.png" alt="Chehar Krupa" style={{ width: "82px", height: "auto", display: "block" }} />
               <div>
-                <div className="text-lg font-extrabold text-[#1a2a3e] tracking-[1.5px] pb-0.5 border-b border-[#1a2a3e] whitespace-nowrap">
-                  CHEHAR KRUPA
-                </div>
-                <div className="text-[0.5625rem] font-medium text-[#1a2a3e] tracking-[4px] pt-1 text-center whitespace-nowrap">
-                  GROUP OF INDUSTRIES
-                </div>
+                <div style={{ fontSize: "22px", fontWeight: 800, color: "#1a2a3e", letterSpacing: "1.5px", lineHeight: 1.05, paddingBottom: "3px", borderBottom: "1.5px solid #1a2a3e", whiteSpace: "nowrap" }}>CHEHAR KRUPA</div>
+                <div style={{ fontSize: "9.5px", fontWeight: 500, color: "#1a2a3e", letterSpacing: "4.5px", lineHeight: 1, paddingTop: "4px", textAlign: "center", whiteSpace: "nowrap" }}>GROUP OF INDUSTRIES</div>
               </div>
             </div>
 
-            <h2 className="text-center text-xs font-bold text-[#1a2a3e] tracking-[2.5px] uppercase">
-              Textile Production System
-            </h2>
-            <div className="w-16 h-[2.5px] bg-[#c9a84e] mx-auto my-3" />
-
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-[#1a2a3e]">
-                {activeTab === "signin" ? "Welcome Back" : "Request Access"}
-              </h3>
-              <p className="text-xs text-[#8a8f9c] mt-0.5">
-                {activeTab === "signin"
-                  ? "Sign in to the Textile Production System"
-                  : "Submit details for Admin authorization"}
-              </p>
-            </div>
+            <h2 style={{ textAlign: "center", fontSize: "15px", fontWeight: 700, color: "#1a2a3e", letterSpacing: "2.5px", marginBottom: "6px" }}>TEXTILE PRODUCTION SYSTEM</h2>
+            <div style={{ width: "62px", height: "2.5px", background: "#c9a84e", margin: "12px auto 22px" }}></div>
+            <h3 style={{ textAlign: "center", fontSize: "24px", fontWeight: 700, color: "#1a2a3e", marginBottom: "4px" }}>
+              {activeTab === "signin" ? "Welcome Back" : "Request Access"}
+            </h3>
+            <p style={{ textAlign: "center", fontSize: "13px", color: "#8a8f9c", marginBottom: "28px" }}>
+              {activeTab === "signin" ? "Sign in to the Textile Production System" : "Submit details for Admin authorization"}
+            </p>
 
             {/* TAB 1: SIGN IN VIEW */}
             {activeTab === "signin" && (
@@ -314,87 +258,81 @@ function AuthPage() {
                   e.preventDefault();
                   signIn();
                 }}
-                className="space-y-4 pt-2"
               >
-                {/* Email Address */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="block text-xs font-medium text-[#2a3040]">
-                    Email Address
-                  </Label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#a0a6b2]" />
-                    <Input
-                      id="email"
+                {/* Email */}
+                <div style={{ marginBottom: "18px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#2a3040", marginBottom: "7px" }}>Email Address</label>
+                  <div style={{ position: "relative" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a0a6b2" strokeWidth="1.6" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }}>
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <input
                       type="email"
                       required
-                      placeholder="Enter your email address"
-                      className="pl-10 h-11 text-xs border-[#e2e4ea] bg-[#f7f8fa] text-[#1a2a3e] rounded-xl focus:border-[#1a7d6a] focus:ring-[#1a7d6a]/20"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      style={{ width: "100%", padding: "13px 14px 13px 42px", border: "1px solid #e2e4ea", borderRadius: "10px", fontSize: "14px", fontFamily: "Poppins, sans-serif", color: "#1a2a3e", background: "#f7f8fa" }}
                     />
                   </div>
                 </div>
 
                 {/* Password */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="password" className="block text-xs font-medium text-[#2a3040]">
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#a0a6b2]" />
-                    <Input
-                      id="password"
+                <div style={{ marginBottom: "24px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#2a3040", marginBottom: "7px" }}>Password</label>
+                  <div style={{ position: "relative" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a0a6b2" strokeWidth="1.6" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }}>
+                      <rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path>
+                    </svg>
+                    <input
                       type={showPassword ? "text" : "password"}
                       required
-                      placeholder="Enter your password"
-                      className="pl-10 pr-10 h-11 text-xs border-[#e2e4ea] bg-[#f7f8fa] text-[#1a2a3e] rounded-xl focus:border-[#1a7d6a] focus:ring-[#1a7d6a]/20"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      style={{ width: "100%", padding: "13px 44px 13px 42px", border: "1px solid #e2e4ea", borderRadius: "10px", fontSize: "14px", fontFamily: "Poppins, sans-serif", color: "#1a2a3e", background: "#f7f8fa" }}
                     />
-                    <button
-                      type="button"
+                    <svg
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a0a6b2] hover:text-[#1a2a3e]"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#a0a6b2"
+                      strokeWidth="1.6"
+                      style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", cursor: "pointer" }}
                     >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>
+                    </svg>
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <Button
+                {/* Sign In Button */}
+                <button
                   type="submit"
                   disabled={busy}
-                  className="w-full h-11 bg-gradient-to-r from-[#1a7d6a] to-[#14695a] hover:opacity-95 text-white font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md mt-4"
+                  style={{ width: "100%", padding: "14px", background: "linear-gradient(135deg, #1a7d6a 0%, #14695a 100%)", color: "#ffffff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: 600, fontFamily: "Poppins, sans-serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}
                 >
-                  <span>{busy ? "Signing in..." : "Sign In"}</span>
-                  <ArrowRight className="size-4" />
-                </Button>
+                  {busy ? "Signing in..." : "Sign In"}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+                </button>
 
                 {/* Divider */}
-                <div className="flex items-center gap-3 my-4">
-                  <div className="flex-1 h-px bg-[#e2e4ea]" />
-                  <span className="text-xs text-[#a0a6b2]">or</span>
-                  <div className="flex-1 h-px bg-[#e2e4ea]" />
+                <div style={{ display: "flex", alignItems: "center", gap: "14px", margin: "18px 0" }}>
+                  <div style={{ flex: 1, height: "1px", background: "#e2e4ea" }}></div>
+                  <span style={{ fontSize: "13px", color: "#a0a6b2" }}>or</span>
+                  <div style={{ flex: 1, height: "1px", background: "#e2e4ea" }}></div>
                 </div>
 
-                {/* Footer Quick Links */}
-                <div className="flex items-center justify-center gap-3 text-xs font-medium">
-                  <button
-                    type="button"
-                    onClick={() => setForgotModalOpen(true)}
-                    className="text-[#1a7d6a] hover:underline flex items-center gap-1.5 px-3 py-1"
-                  >
-                    <Lock className="size-3.5 text-[#1a7d6a]" />
+                {/* Links */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <button type="button" onClick={() => setForgotModalOpen(true)} style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: "7px", padding: "6px 18px", fontSize: "13px", fontWeight: 500, color: "#1a7d6a", cursor: "pointer" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7d6a" strokeWidth="1.8"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>
                     Forgot Password?
                   </button>
-                  <div className="w-px h-4 bg-[#dfe1e6]" />
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("request")}
-                    className="text-[#1a7d6a] hover:underline flex items-center gap-1.5 px-3 py-1 font-semibold"
-                  >
-                    <UserPlus className="size-3.5 text-[#1a7d6a]" />
+                  <div style={{ width: "1px", height: "18px", background: "#dfe1e6" }}></div>
+                  <button type="button" onClick={() => setActiveTab("request")} style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: "7px", padding: "6px 18px", fontSize: "13px", fontWeight: 500, color: "#1a7d6a", cursor: "pointer" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7d6a" strokeWidth="1.8"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                     Request Access
                   </button>
                 </div>
@@ -403,7 +341,7 @@ function AuthPage() {
 
             {/* TAB 2: REQUEST ACCESS VIEW (WORKFLOW B) */}
             {activeTab === "request" && (
-              <div className="space-y-4 pt-2">
+              <div className="space-y-4">
                 {submittedSuccess ? (
                   <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2 text-center">
                     <div className="flex justify-center text-amber-600">
@@ -556,38 +494,38 @@ function AuthPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* BOTTOM FEATURE BAR (4 Columns, Pure White with Divider Borders) */}
+      {/* BOTTOM BAR (100% Exact Copy from Login page design code/Login Page.dc.html) */}
       {/* ========================================================================= */}
-      <div className="bg-white border-t border-[#e8eaee] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="flex items-center gap-3.5 p-5 lg:px-7 border-b sm:border-b-0 sm:border-r border-[#eaecf0]">
-          <ShieldCheck className="size-9 text-[#1a7d6a] shrink-0" strokeWidth={1.4} />
+      <div style={{ background: "#ffffff", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid #e8eaee" }} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "20px 28px", borderRight: "1px solid #eaecf0" }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1a7d6a" strokeWidth="1.4"><circle cx="12" cy="12" r="9"></circle><path d="M8 12l3 3 5-5"></path></svg>
           <div>
-            <div className="text-sm font-semibold text-[#1a2a3e]">Secure & Reliable</div>
-            <div className="text-xs text-[#8a8f9c]">Enterprise Grade Security</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#1a2a3e" }}>Secure &amp; Reliable</div>
+            <div style={{ fontSize: "11.5px", color: "#8a8f9c" }}>Enterprise Grade Security</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3.5 p-5 lg:px-7 border-b sm:border-b-0 lg:border-r border-[#eaecf0]">
-          <Database className="size-9 text-[#c9a84e] shrink-0" strokeWidth={1.4} />
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "20px 28px", borderRight: "1px solid #eaecf0" }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.4"><ellipse cx="12" cy="6" rx="8" ry="3"></ellipse><path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6"></path><path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"></path></svg>
           <div>
-            <div className="text-sm font-semibold text-[#1a2a3e]">Real-time Data</div>
-            <div className="text-xs text-[#8a8f9c]">Accurate & Up-to-date</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#1a2a3e" }}>Real-time Data</div>
+            <div style={{ fontSize: "11.5px", color: "#8a8f9c" }}>Accurate &amp; Up-to-date</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3.5 p-5 lg:px-7 border-b sm:border-b-0 sm:border-r border-[#eaecf0]">
-          <Cpu className="size-9 text-[#1a7d6a] shrink-0" strokeWidth={1.4} />
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "20px 28px", borderRight: "1px solid #eaecf0" }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1a7d6a" strokeWidth="1.4"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
           <div>
-            <div className="text-sm font-semibold text-[#1a2a3e]">Integrated Operations</div>
-            <div className="text-xs text-[#8a8f9c]">End-to-End Automation</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#1a2a3e" }}>Integrated Operations</div>
+            <div style={{ fontSize: "11.5px", color: "#8a8f9c" }}>End-to-End Automation</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3.5 p-5 lg:px-7">
-          <Users className="size-9 text-[#c9a84e] shrink-0" strokeWidth={1.4} />
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "20px 28px" }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c9a84e" strokeWidth="1.4"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"></path></svg>
           <div>
-            <div className="text-sm font-semibold text-[#1a2a3e]">Built for Performance</div>
-            <div className="text-xs text-[#8a8f9c]">Scalable & Efficient</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#1a2a3e" }}>Built for Performance</div>
+            <div style={{ fontSize: "11.5px", color: "#8a8f9c" }}>Scalable &amp; Efficient</div>
           </div>
         </div>
       </div>

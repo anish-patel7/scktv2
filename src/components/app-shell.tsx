@@ -42,7 +42,7 @@ export function AppShell({
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="section-label">Loading WeaveOne…</p>
+        <p className="section-label">Loading SCKT…</p>
       </div>
     );
   }
@@ -57,11 +57,11 @@ export function AppShell({
       >
         <div className="flex h-11 items-center gap-2 border-b border-sidebar-border px-3">
           <span className="grid size-6 place-items-center rounded-sm bg-sidebar-primary text-[0.625rem] font-bold text-sidebar-primary-foreground">
-            W1
+            SCKT
           </span>
           {!collapsed && (
             <span className="text-sm font-semibold tracking-tight text-sidebar-accent-foreground">
-              WeaveOne
+              SCKT ERP
             </span>
           )}
         </div>

@@ -15,15 +15,15 @@ import { ArrowRight, UserPlus, CheckCircle2, ShieldAlert } from "lucide-react";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — WeaveOne Textile ERP" },
+      { title: "Sign in — SCKT Textile ERP" },
       {
         name: "description",
-        content: "Sign in to WeaveOne Textile ERP platform or request access for approval.",
+        content: "Sign in to SCKT Textile ERP platform or request access for approval.",
       },
-      { property: "og:title", content: "Sign in — WeaveOne Textile ERP" },
+      { property: "og:title", content: "Sign in — SCKT Textile ERP" },
       {
         property: "og:description",
-        content: "Secure access to the WeaveOne fabric costing and manufacturing platform.",
+        content: "Secure access to the SCKT fabric costing and manufacturing platform.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -67,14 +67,14 @@ function AuthPage() {
     setBusy(true);
 
     const normEmail = email.trim().toLowerCase();
-    if (normEmail === "admin@weaveone.com" || normEmail.includes("admin")) {
-      setAuthenticatedUser("admin@weaveone.com");
-      toast.success("Signed in successfully as WeaveOne Admin!");
+    if (normEmail === "admin@sckt.com" || normEmail === "admin@weaveone.com" || normEmail.includes("admin")) {
+      setAuthenticatedUser("admin@sckt.com");
+      toast.success("Signed in successfully as SCKT Admin!");
       setBusy(false);
       navigate({ to: "/" });
       return;
-    } else if (normEmail === "user@weaveone.com" || normEmail.includes("user")) {
-      setAuthenticatedUser("user@weaveone.com");
+    } else if (normEmail === "user@sckt.com" || normEmail === "user@weaveone.com" || normEmail.includes("user")) {
+      setAuthenticatedUser("user@sckt.com");
       toast.success("Signed in successfully as Standard User!");
       setBusy(false);
       navigate({ to: "/" });
@@ -127,9 +127,9 @@ function AuthPage() {
       <div className="hidden flex-col justify-between bg-sidebar p-10 lg:flex">
         <div className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-sm bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
-            W1
+            SCKT
           </span>
-          <span className="font-semibold text-sidebar-accent-foreground text-sm">WeaveOne ERP</span>
+          <span className="font-semibold text-sidebar-accent-foreground text-sm">SCKT ERP</span>
         </div>
         <div className="max-w-md space-y-3">
           <h2 className="text-2xl font-semibold text-sidebar-accent-foreground">
@@ -140,14 +140,14 @@ function AuthPage() {
           </p>
         </div>
         <p className="text-[0.6875rem] text-sidebar-foreground/50">
-          Internal — Confidential · WeaveOne ERP v3.0
+          Internal — Confidential · SCKT ERP v3.0
         </p>
       </div>
 
       <div className="flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-sm space-y-4">
           <div className="space-y-1">
-            <h1 className="text-base font-bold text-foreground">Sign in to WeaveOne</h1>
+            <h1 className="text-base font-bold text-foreground">Sign in to SCKT ERP</h1>
             <p className="text-xs text-muted-foreground">
               Enter authorized credentials or submit an access request.
             </p>

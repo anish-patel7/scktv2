@@ -27,13 +27,13 @@ import type { UserRole, WhatsAppButtonOption, WhatsAppUser } from "@/lib/whatsap
 export const Route = createFileRoute("/system/whatsapp")({
   head: () => ({
     meta: [
-      { title: "WhatsApp Bot & Webhook Settings — WeaveOne ERP" },
+      { title: "WhatsApp Bot & Webhook Settings — SCKT ERP" },
       {
         name: "description",
         content:
           "Rule-based WhatsApp Business Assistant settings, provider configuration, authorized phone-to-user mappings, automatic alerts matrix, and live bot simulator.",
       },
-      { property: "og:title", content: "WhatsApp Settings — WeaveOne ERP" },
+      { property: "og:title", content: "WhatsApp Settings — SCKT ERP" },
       { property: "og:description", content: "Non-AI WhatsApp Assistant setup and RBAC mapping." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -303,7 +303,7 @@ function WhatsAppAdminPage() {
                       W1
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold leading-tight">WeaveOne Business Assistant</h4>
+                      <h4 className="text-xs font-bold leading-tight">SCKT Business Assistant</h4>
                       <span className="text-[0.625rem] text-emerald-200 block">Official ERP Bot (Non-AI)</span>
                     </div>
                   </div>

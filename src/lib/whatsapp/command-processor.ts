@@ -95,29 +95,14 @@ export function executeWhatsAppCommand(
 }
 
 function handleMenuCommand(): CommandResponse {
-  const text = `📊 *WEAVEONE BUSINESS ASSISTANT*
-
-1️⃣ *Inventory* (Stock, Yarn, Fabric)
-2️⃣ *Production* (Today, Looms, Pending)
-3️⃣ *Loom Status* (Running, Idle, Breakdown)
-4️⃣ *Job Work* (Challans, Balances)
-5️⃣ *Orders* (Sales Orders, Pending)
-6️⃣ *Dispatch* (Today's Packing Lists)
-7️⃣ *Party* (Customer Profiles & Balance)
-8️⃣ *Purchase* (Yarn Reorder Alerts)
-9️⃣ *Quality* (4-Point Scores & Holds)
-🔟 *Reports* (Daily Summary & Analytics)
-
-_Reply with the number (1-10) or type commands like *STOCK DESIGN D-015* or *PRODUCTION TODAY*._`;
-
   return {
-    formatted_text: text,
+    formatted_text: `📊 *SCKT BUSINESS ASSISTANT*\n\n1️⃣ *Inventory* (Stock, Yarn, Fabric)\n2️⃣ *Production* (Today, Looms, Pending)\n3️⃣ *Loom Status* (Running, Idle, Breakdown)\n4️⃣ *Job Work* (Challans, Balances)\n5️⃣ *Orders* (Sales Orders, Pending)\n6️⃣ *Dispatch* (Today's Packing Lists)\n7️⃣ *Party* (Customer Profiles & Balance)\n8️⃣ *Purchase* (Yarn Reorder Alerts)\n9️⃣ *Quality* (4-Point Scores & Holds)\n🔟 *Reports* (Daily Summary & Analytics)\n\n_Reply with number (1-10) or type *STOCK DESIGN D-015* or *PRODUCTION TODAY*._`,
     category: "MENU",
     required_role_granted: true,
     buttons: [
-      { id: "btn_inv", title: "📦 Inventory" },
+      { id: "btn_stock", title: "📦 Stock Status" },
       { id: "btn_prod", title: "🏭 Production" },
-      { id: "btn_looms", title: "🧵 Loom Status" },
+      { id: "btn_loom", title: "⚡ Loom Status" },
     ],
   };
 }

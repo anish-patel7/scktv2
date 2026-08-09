@@ -10,6 +10,7 @@ import {
   LogOut,
   CircleDot,
 } from "lucide-react";
+import { SidebarAccordionNav } from "@/components/sidebar-accordion-nav";
 import { NAV } from "@/lib/nav";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,40 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-function SidebarLink({
-  to,
-  label,
-  collapsed,
-  phase,
-}: {
-  to: string;
-  label: string;
-  collapsed: boolean;
-  phase?: number | undefined;
-}) {
-  return (
-    <Link
-      to={to}
-      className="group flex items-center gap-2 rounded-sm px-2 py-1.5 text-[0.8125rem] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      activeProps={{
-        className:
-          "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-sidebar-primary pl-[6px]",
-      }}
-      activeOptions={{ exact: false }}
-    >
-      <CircleDot className="size-3 shrink-0 opacity-50" />
-      {!collapsed && (
-        <span className="flex-1 truncate">
-          {label}
-          {phase && phase > 1 ? (
-            <span className="ml-1 text-[0.625rem] text-sidebar-foreground/45">P{phase}</span>
-          ) : null}
-        </span>
-      )}
-    </Link>
-  );
-}
 
 export function AppShell({
   title,
@@ -99,25 +66,7 @@ export function AppShell({
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 py-2">
-          <SidebarLink to="/" label="Dashboard" collapsed={collapsed} />
-          {NAV.map((group) => (
-            <div key={group.label} className="mt-3">
-              {!collapsed && (
-                <p className="section-label px-2 pb-1 text-sidebar-foreground/50">{group.label}</p>
-              )}
-              {group.items.map((item) => (
-                <SidebarLink
-                  key={item.to}
-                  to={item.to}
-                  label={item.label}
-                  phase={item.phase}
-                  collapsed={collapsed}
-                />
-              ))}
-            </div>
-          ))}
-        </nav>
+        <SidebarAccordionNav groups={NAV} collapsed={collapsed} />
 
         <div className="flex items-center gap-2 border-t border-sidebar-border px-3 py-2 text-[0.6875rem] text-sidebar-foreground/70">
           <span className="size-1.5 rounded-full bg-success" />

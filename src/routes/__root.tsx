@@ -81,10 +81,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "SCKT ERP — Textile Design & Costing Platform" },
+      { title: "SCKT — Textile Design & Costing Platform" },
       { name: "description", content: "Comprehensive textile design management and fabric costing system." },
       { name: "author", content: "SCKT" },
-      { property: "og:title", content: "SCKT ERP — Textile Design & Costing Platform" },
+      { property: "og:title", content: "SCKT — Textile Design & Costing Platform" },
       { property: "og:description", content: "Comprehensive textile design management and fabric costing system." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

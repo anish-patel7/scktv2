@@ -61,7 +61,7 @@ export function AppShell({
           </span>
           {!collapsed && (
             <span className="text-sm font-semibold tracking-tight text-sidebar-accent-foreground">
-              SCKT ERP
+              SCKT
             </span>
           )}
         </div>

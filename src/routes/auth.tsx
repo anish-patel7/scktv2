@@ -41,12 +41,12 @@ import {
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Chehar Krupa Group Textile Production ERP" },
+      { title: "Sign in — Chehar Krupa Group Textile Production System" },
       {
         name: "description",
         content: "Sign in to Chehar Krupa Group of Industries Textile Production & Management System.",
       },
-      { property: "og:title", content: "Chehar Krupa Group — Textile Production ERP" },
+      { property: "og:title", content: "Chehar Krupa Group — Textile Production System" },
       {
         property: "og:description",
         content: "Integrated platform for textile production, costing, inventory, quality, and sales.",
@@ -297,15 +297,15 @@ function AuthPage() {
               </div>
 
               <div className="text-[0.6875rem] font-bold tracking-widest text-[#054d4a] uppercase pt-1">
-                Textile Production ERP
+                Textile Production System
               </div>
 
               <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">
-                {activeTab === "signin" ? "Welcome Back" : "Request ERP Access"}
+                {activeTab === "signin" ? "Welcome Back" : "Request Access"}
               </h2>
               <p className="text-xs text-gray-500">
                 {activeTab === "signin"
-                  ? "Sign in to the Textile Production ERP"
+                  ? "Sign in to the Textile Production System"
                   : "Submit registration details for Admin review"}
               </p>
             </div>
@@ -370,7 +370,7 @@ function AuthPage() {
                   disabled={busy}
                   className="w-full h-11 bg-[#054d4a] hover:bg-[#006666] text-white font-bold text-sm rounded-lg flex justify-center items-center gap-2 transition-all shadow-md mt-2"
                 >
-                  <span>{busy ? "Signing in..." : "Sign In to ERP"}</span>
+                  <span>{busy ? "Signing in..." : "Sign In"}</span>
                   <ArrowRight className="size-4" />
                 </Button>
 
@@ -571,7 +571,7 @@ function AuthPage() {
           </div>
 
           <div className="w-full text-center text-[0.6875rem] text-gray-400">
-            Shree Chehar Krupa Textile ERP Platform
+            Shree Chehar Krupa Textile Platform
           </div>
         </div>
       </div>

@@ -18,7 +18,7 @@ export const MASTER_TYPES = [
   { type: "loom", label: "Loom" },
   { type: "broker", label: "Broker" },
   { type: "salesman", label: "Salesman" },
-  { type: "beam_colour", label: "Beam Colour" },
+  { type: "beam_colour", label: "Beam Yarn" },
   { type: "process", label: "Process" },
 ] as const;
 

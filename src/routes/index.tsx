@@ -11,13 +11,13 @@ import { fmt } from "@/lib/costing";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "WeaveOne — Textile Fabric Costing & Manufacturing ERP" },
+      { title: "SCKT — Shree Chehar Krupa Textile" },
       {
         name: "description",
         content:
-          "Dashboard for WeaveOne: fabric cost sheets, yarn rate masters, approvals and production readiness for textile weaving mills.",
+          "Dashboard for SCKT Shree Chehar Krupa Textile: fabric cost sheets, yarn rate masters, approvals and production readiness.",
       },
-      { property: "og:title", content: "WeaveOne — Textile Costing & Manufacturing ERP" },
+      { property: "og:title", content: "SCKT — Shree Chehar Krupa Textile" },
       {
         property: "og:description",
         content:

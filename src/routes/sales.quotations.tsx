@@ -25,13 +25,13 @@ import { uid, type QuotationItem, type QuoteStatus, type SalesOrderItem } from "
 export const Route = createFileRoute("/sales/quotations")({
   head: () => ({
     meta: [
-      { title: "Quotations — WeaveOne ERP" },
+      { title: "Quotations — SCKT ERP" },
       {
         name: "description",
         content:
           "Quotation builder with margin visibility, cost sheet binding, approval validation, and 1-click sales order conversion.",
       },
-      { property: "og:title", content: "Quotations — WeaveOne ERP" },
+      { property: "og:title", content: "Quotations — SCKT ERP" },
       { property: "og:description", content: "Quotation builder with exact margin visibility." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

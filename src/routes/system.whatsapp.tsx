@@ -384,7 +384,7 @@ function WhatsAppAdminPage() {
                     <TableRow className="bg-muted/60 font-semibold text-muted-foreground">
                       <TableHead className="h-8">WhatsApp Phone Number</TableHead>
                       <TableHead className="h-8">Display User Name</TableHead>
-                      <TableHead className="h-8">WeaveOne Role</TableHead>
+                      <TableHead className="h-8">SCKT Role</TableHead>
                       <TableHead className="h-8">Status</TableHead>
                       <TableHead className="h-8">Registered Date</TableHead>
                     </TableRow>
@@ -518,7 +518,7 @@ function WhatsAppAdminPage() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium">WeaveOne Role *</Label>
+              <Label className="text-xs font-medium">SCKT Role *</Label>
               <Select value={userForm.role} onValueChange={(v) => setUserForm({ ...userForm, role: v as UserRole })}>
                 <SelectTrigger className="h-8 text-xs font-mono">
                   <SelectValue />

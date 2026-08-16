@@ -16,13 +16,13 @@ import { fmt } from "@/lib/costing";
 export const Route = createFileRoute("/reports")({
   head: () => ({
     meta: [
-      { title: "Executive ERP Reports — WeaveOne ERP" },
+      { title: "Executive ERP Reports — SCKT ERP" },
       {
         name: "description",
         content:
           "Cross-module ERP executive reporting: Costing register, Inventory valuation, Sales pipeline, Aged receivables, and Quality pass rates.",
       },
-      { property: "og:title", content: "Executive Reports — WeaveOne ERP" },
+      { property: "og:title", content: "Executive Reports — SCKT ERP" },
       { property: "og:description", content: "Executive cross-module reporting dashboard." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

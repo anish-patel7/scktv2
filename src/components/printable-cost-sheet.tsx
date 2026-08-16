@@ -57,11 +57,11 @@ export function PrintableCostSheet({ sheet, onBack }: PrintableCostSheetProps) {
         <div className="flex items-start justify-between border-b-2 border-primary pb-4">
           <div className="flex items-center gap-3">
             <div className="grid size-10 place-items-center rounded bg-primary text-sm font-bold text-primary-foreground print:bg-black print:text-white">
-              W1
+              SCKT
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">WeaveOne ERP</h1>
-              <p className="text-[0.6875rem] text-muted-foreground">Textile Fabric Costing & Operational System of Record</p>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">SCKT ERP</h1>
+              <p className="text-[0.6875rem] text-muted-foreground">Shree Chehar Krupa Textile · Fabric Costing & Operational System</p>
             </div>
           </div>
 

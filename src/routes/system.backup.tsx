@@ -4,9 +4,9 @@ import { ModulePlaceholder } from "@/components/module-placeholder";
 export const Route = createFileRoute("/system/backup")({
   head: () => ({
     meta: [
-      { title: "Backup & Restore — WeaveOne" },
-      { name: "description", content: "Backup, restore & data retention in WeaveOne, the textile fabric costing and manufacturing ERP platform." },
-      { property: "og:title", content: "Backup & Restore — WeaveOne" },
+      { title: "Backup & Restore — SCKT ERP" },
+      { name: "description", content: "Backup, restore & data retention in SCKT ERP, the textile fabric costing and manufacturing ERP platform." },
+      { property: "og:title", content: "Backup & Restore — SCKT ERP" },
       { property: "og:description", content: "Backup, restore & data retention for textile weaving operations." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -28,12 +28,12 @@ import { getLocalParties, getLocalSubParties } from "@/lib/party-store";
 export const Route = createFileRoute("/production/job-cards")({
   head: () => ({
     meta: [
-      { title: "Job Cards — WeaveOne" },
+      { title: "Job Cards — SCKT ERP" },
       {
         name: "description",
         content: "Issue digital job cards against production orders and looms, with feeder colourway notes and live woven progress.",
       },
-      { property: "og:title", content: "Job Cards — WeaveOne" },
+      { property: "og:title", content: "Job Cards — SCKT ERP" },
       { property: "og:description", content: "Digital job card vouchers issued from priced, approved costings." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

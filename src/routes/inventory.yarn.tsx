@@ -24,13 +24,13 @@ import { uid, type YarnStockItem, type StockMovement } from "@/lib/inventory-sto
 export const Route = createFileRoute("/inventory/yarn")({
   head: () => ({
     meta: [
-      { title: "Yarn Store — WeaveOne ERP" },
+      { title: "Yarn Store — SCKT ERP" },
       {
         name: "description",
         content:
           "Perpetual lot-wise yarn inventory tracking, bin locations, valuation, reorder level alerts, and FIFO issues.",
       },
-      { property: "og:title", content: "Yarn Store — WeaveOne ERP" },
+      { property: "og:title", content: "Yarn Store — SCKT ERP" },
       { property: "og:description", content: "Yarn stock management with negative stock prevention and FIFO issue guidance." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -27,13 +27,13 @@ import { getLocalCostSheets } from "@/lib/cost-sheet-store";
 export const Route = createFileRoute("/production/orders")({
   head: () => ({
     meta: [
-      { title: "Production Orders — WeaveOne" },
+      { title: "Production Orders — SCKT ERP" },
       {
         name: "description",
         content:
           "Raise and track weaving production orders from approved cost sheets, with quantity, delivery date, priority and live progress.",
       },
-      { property: "og:title", content: "Production Orders — WeaveOne" },
+      { property: "og:title", content: "Production Orders — SCKT ERP" },
       { property: "og:description", content: "Weaving production orders with live progress rolled up from job cards." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

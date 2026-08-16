@@ -8,13 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export const Route = createFileRoute("/system/audit")({
   head: () => ({
     meta: [
-      { title: "Audit History — WeaveOne" },
+      { title: "Audit History — SCKT ERP" },
       {
         name: "description",
         content:
           "Complete audit trail of cost sheet creation, edits, approvals and master data changes with actor and timestamp.",
       },
-      { property: "og:title", content: "Audit History — WeaveOne" },
+      { property: "og:title", content: "Audit History — SCKT ERP" },
       { property: "og:description", content: "Who changed what, and when — defensibly recorded." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

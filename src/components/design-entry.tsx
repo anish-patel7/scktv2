@@ -663,10 +663,10 @@ export function DesignEntry({
 
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={handleAddFeeder} className="h-8 text-xs gap-1 font-semibold">
-              <Plus className="size-3.5" /> + Add Feeder
+              <Plus className="size-3.5" /> Add Feeder
             </Button>
             <Button size="sm" variant="secondary" onClick={handleAddBeamColour} className="h-8 text-xs gap-1 font-semibold">
-              <Plus className="size-3.5" /> + Add Beam Colour
+              <Plus className="size-3.5" /> Add Beam Colour
             </Button>
           </div>
         </CardHeader>

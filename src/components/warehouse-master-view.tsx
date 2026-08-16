@@ -439,7 +439,7 @@ export function WarehouseMasterView() {
         </div>
 
         <Button size="sm" onClick={handleOpenCreate} className="h-8 gap-1 text-xs font-semibold">
-          <Plus className="size-3.5" /> + New Warehouse
+          <Plus className="size-3.5" /> New Warehouse
         </Button>
       </div>
 
@@ -971,7 +971,7 @@ export function WarehouseMasterView() {
               {/* Form to Add / Edit Location */}
               <form onSubmit={handleSaveLocation} className="rounded-lg border border-border bg-card p-3 space-y-3">
                 <h4 className="text-xs font-bold text-foreground">
-                  {editingLocId ? "Edit Location" : "+ Add New Location"}
+                  {editingLocId ? "Edit Location" : "Add New Location"}
                 </h4>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">

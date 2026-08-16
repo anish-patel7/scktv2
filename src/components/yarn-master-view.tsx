@@ -326,7 +326,7 @@ export function YarnMasterView() {
       breadcrumb={[{ label: "Masters" }, { label: "Yarn" }]}
       actions={
         <Button onClick={handleOpenCreate} size="sm" className="h-7 gap-1 text-xs">
-          <Plus className="size-3.5" /> + New Yarn
+          <Plus className="size-3.5" /> New Yarn
         </Button>
       }
     >

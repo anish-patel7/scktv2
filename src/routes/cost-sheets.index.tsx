@@ -22,7 +22,7 @@ import { getLocalCostSheets, duplicateCostSheet } from "@/lib/cost-sheet-store";
 export const Route = createFileRoute("/cost-sheets/")({
   head: () => ({
     meta: [
-      { title: "Cost Sheets — WeaveOne" },
+      { title: "Cost Sheets — SCKT ERP" },
       {
         name: "description",
         content:

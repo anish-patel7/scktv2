@@ -70,13 +70,13 @@ import {
 export const Route = createFileRoute("/system/users")({
   head: () => ({
     meta: [
-      { title: "Users & Roles Governance — WeaveOne ERP" },
+      { title: "Users & Roles Governance — SCKT ERP" },
       {
         name: "description",
         content:
-          "Manage WeaveOne ERP system users, direct admin user creation, self-registration approval queue, role-permission matrix, and session audit trails.",
+          "Manage SCKT ERP system users, direct admin user creation, self-registration approval queue, role-permission matrix, and session audit trails.",
       },
-      { property: "og:title", content: "Users & Roles Governance — WeaveOne ERP" },
+      { property: "og:title", content: "Users & Roles Governance — SCKT ERP" },
       { property: "og:description", content: "Permission-controlled access and user approval workflow." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -186,7 +186,7 @@ function UsersGovernancePage() {
         failed_attempts: 0,
         is_locked: false,
       },
-      "WeaveOne Admin"
+      "SCKT Admin"
     );
 
     setAddDirectOpen(false);
@@ -202,7 +202,7 @@ function UsersGovernancePage() {
   // Handle Workflow B Approval
   const handleConfirmApproval = () => {
     if (!approvalModalUser) return;
-    approveUserRequest(approvalModalUser.id, assignRoleId || approvalModalUser.primary_role_id, approvalRemarks, "WeaveOne Admin");
+    approveUserRequest(approvalModalUser.id, assignRoleId || approvalModalUser.primary_role_id, approvalRemarks, "SCKT Admin");
     setApprovalModalUser(null);
     setApprovalRemarks("");
   };
@@ -214,7 +214,7 @@ function UsersGovernancePage() {
       toast.error("Rejection remarks are mandatory.");
       return;
     }
-    rejectUserRequest(rejectModalUser.id, rejectionRemarks, "WeaveOne Admin");
+    rejectUserRequest(rejectModalUser.id, rejectionRemarks, "SCKT Admin");
     setRejectModalUser(null);
     setRejectionRemarks("");
   };

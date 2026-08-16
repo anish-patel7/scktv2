@@ -24,12 +24,12 @@ import { uid, type DailyProduction } from "@/lib/production-store";
 export const Route = createFileRoute("/production/daily")({
   head: () => ({
     meta: [
-      { title: "Daily Production — WeaveOne" },
+      { title: "Daily Production — SCKT ERP" },
       {
         name: "description",
         content: "Capture shift-wise metres woven, yarn consumed and downtime reasons against each job card and loom.",
       },
-      { property: "og:title", content: "Daily Production — WeaveOne" },
+      { property: "og:title", content: "Daily Production — SCKT ERP" },
       { property: "og:description", content: "Shift-wise production and downtime capture for weaving operations." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

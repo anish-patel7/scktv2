@@ -53,13 +53,13 @@ import { DesignEntry } from "@/components/design-entry";
 export const Route = createFileRoute("/designs")({
   head: () => ({
     meta: [
-      { title: "Designs — WeaveOne" },
+      { title: "Designs — SCKT ERP" },
       {
         name: "description",
         content:
-          "Design repository & technical specification in WeaveOne, the textile fabric costing and manufacturing ERP platform.",
+          "Design repository & technical specification in SCKT ERP, the textile fabric costing and manufacturing ERP platform.",
       },
-      { property: "og:title", content: "Designs — WeaveOne" },
+      { property: "og:title", content: "Designs — SCKT ERP" },
       {
         property: "og:description",
         content: "Design repository & technical specification for textile weaving operations.",

@@ -16,13 +16,13 @@ import { fmt } from "@/lib/costing";
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "IoT Machine Telemetry & AI Analytics — WeaveOne ERP" },
+      { title: "IoT Machine Telemetry & AI Analytics — SCKT ERP" },
       {
         name: "description",
         content:
           "Real-time IoT loom telemetry wall, live efficiency, telemetry gap detection (BR-157), energy consumption per metre, and advisory AI yarn substitution engine (BR-159).",
       },
-      { property: "og:title", content: "Analytics — WeaveOne ERP" },
+      { property: "og:title", content: "Analytics — SCKT ERP" },
       { property: "og:description", content: "Real-time IoT telemetry and AI cost optimization." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -21,13 +21,13 @@ import { getLocalDesigns, cloneDesign } from "@/lib/design-store";
 export const Route = createFileRoute("/gallery")({
   head: () => ({
     meta: [
-      { title: "Image Gallery — WeaveOne" },
+      { title: "Image Gallery — SCKT ERP" },
       {
         name: "description",
         content:
-          "Fabric image gallery & file management in WeaveOne, the textile fabric costing and manufacturing ERP platform.",
+          "Fabric image gallery & file management in SCKT ERP, the textile fabric costing and manufacturing ERP platform.",
       },
-      { property: "og:title", content: "Image Gallery — WeaveOne" },
+      { property: "og:title", content: "Image Gallery — SCKT ERP" },
       {
         property: "og:description",
         content: "Fabric image gallery & file management for textile weaving operations.",

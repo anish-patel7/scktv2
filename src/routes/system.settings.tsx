@@ -6,13 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export const Route = createFileRoute("/system/settings")({
   head: () => ({
     meta: [
-      { title: "Settings & Constants — WeaveOne" },
+      { title: "Settings & Constants — SCKT ERP" },
       {
         name: "description",
         content:
           "System constants that drive the costing engine: kg divisor, card divisor, default wastage and display precision.",
       },
-      { property: "og:title", content: "Settings & Constants — WeaveOne" },
+      { property: "og:title", content: "Settings & Constants — SCKT ERP" },
       { property: "og:description", content: "Configurable costing constants, snapshotted per sheet." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

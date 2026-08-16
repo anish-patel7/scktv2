@@ -28,13 +28,13 @@ import { uid, type SalesOrderItem, type SalesOrderStatus, type DispatchItem, typ
 export const Route = createFileRoute("/sales/orders")({
   head: () => ({
     meta: [
-      { title: "Sales Orders & Dispatch — WeaveOne ERP" },
+      { title: "Sales Orders & Dispatch — SCKT ERP" },
       {
         name: "description",
         content:
           "Sales order confirmation with credit limit governance, roll-level dispatch integration, and GST e-invoice/e-way bill payload generation.",
       },
-      { property: "og:title", content: "Sales Orders — WeaveOne ERP" },
+      { property: "og:title", content: "Sales Orders — SCKT ERP" },
       { property: "og:description", content: "Sales order execution and dispatch packing list governance." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

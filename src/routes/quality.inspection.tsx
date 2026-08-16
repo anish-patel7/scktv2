@@ -33,13 +33,13 @@ import {
 export const Route = createFileRoute("/quality/inspection")({
   head: () => ({
     meta: [
-      { title: "4-Point Quality Inspection — WeaveOne ERP" },
+      { title: "4-Point Quality Inspection — SCKT ERP" },
       {
         name: "description",
         content:
           "Objective fabric grading using international 4-Point System, visual defect mapping, 4-point yard capping (BR-155), and quality hold governance (BR-153).",
       },
-      { property: "og:title", content: "Quality Inspection — WeaveOne ERP" },
+      { property: "og:title", content: "Quality Inspection — SCKT ERP" },
       { property: "og:description", content: "Fabric inspection and 4-point quality scoring." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

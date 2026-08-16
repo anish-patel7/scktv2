@@ -12,13 +12,13 @@ import { fmt } from "@/lib/costing";
 export const Route = createFileRoute("/approvals")({
   head: () => ({
     meta: [
-      { title: "Approvals — WeaveOne" },
+      { title: "Approvals — SCKT ERP" },
       {
         name: "description",
         content:
           "Approve or reject submitted fabric cost sheets and keep a one-click answer to who authorised each price.",
       },
-      { property: "og:title", content: "Approvals — WeaveOne" },
+      { property: "og:title", content: "Approvals — SCKT ERP" },
       {
         property: "og:description",
         content: "Cost sheet approval queue with full approver attribution.",

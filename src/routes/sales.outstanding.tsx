@@ -25,13 +25,13 @@ import { uid, type PaymentMode, type ReceiptItem, type InvoiceItem } from "@/lib
 export const Route = createFileRoute("/sales/outstanding")({
   head: () => ({
     meta: [
-      { title: "Outstanding Receivables & Receipts — WeaveOne ERP" },
+      { title: "Outstanding Receivables & Receipts — SCKT ERP" },
       {
         name: "description",
         content:
           "Aged receivables report (Current, 1-30, 31-60, 61-90, 90+ Days), payment receipt allocation, and broker commission ledger.",
       },
-      { property: "og:title", content: "Outstanding Ledger — WeaveOne ERP" },
+      { property: "og:title", content: "Outstanding Ledger — SCKT ERP" },
       { property: "og:description", content: "Receivables aging and payment receipt allocation." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

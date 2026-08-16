@@ -9,13 +9,13 @@ import {
 export const Route = createFileRoute("/cost-sheets/new")({
   head: () => ({
     meta: [
-      { title: "New Cost Sheet — WeaveOne" },
+      { title: "New Cost Sheet — SCKT ERP" },
       {
         name: "description",
         content:
           "Create a fabric cost sheet: warp and weft yarn lines, wastage, process charges and card cost with exact workbook arithmetic.",
       },
-      { property: "og:title", content: "New Cost Sheet — WeaveOne" },
+      { property: "og:title", content: "New Cost Sheet — SCKT ERP" },
       {
         property: "og:description",
         content: "Spreadsheet-grade fabric costing with frozen yarn rates and audit attribution.",

@@ -24,13 +24,13 @@ import { uid, type BeamStockItem, type BeamStockStatus, type StockMovement } fro
 export const Route = createFileRoute("/inventory/beam")({
   head: () => ({
     meta: [
-      { title: "Beam Store & Warping Register — WeaveOne ERP" },
+      { title: "Beam Store & Warping Register — SCKT ERP" },
       {
         name: "description",
         content:
           "In-house and loaded warp beam stock management, rack locations, loom transfers, and barcode/QR label printing.",
       },
-      { property: "og:title", content: "Beam Store — WeaveOne ERP" },
+      { property: "og:title", content: "Beam Store — SCKT ERP" },
       { property: "og:description", content: "Perpetual warp beam inventory with loom tracking and QR barcode labels." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

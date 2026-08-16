@@ -25,13 +25,13 @@ import { uid, type ShadeApproval, type LabTest } from "@/lib/quality-store";
 export const Route = createFileRoute("/quality/shade")({
   head: () => ({
     meta: [
-      { title: "Shade Approval & Laboratory Testing — WeaveOne ERP" },
+      { title: "Shade Approval & Laboratory Testing — SCKT ERP" },
       {
         name: "description",
         content:
           "Shade lab dip approvals, Delta-E color matching standards, buyer sign-off, and physical lab testing (GSM, tear strength, shrinkage).",
       },
-      { property: "og:title", content: "Shade Approval — WeaveOne ERP" },
+      { property: "og:title", content: "Shade Approval — SCKT ERP" },
       { property: "og:description", content: "Lab dip shade matching and fabric testing." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

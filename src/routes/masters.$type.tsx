@@ -82,13 +82,13 @@ const SEED_GENERIC_MASTERS: Record<string, GenericMasterItem[]> = {
 export const Route = createFileRoute("/masters/$type")({
   head: () => ({
     meta: [
-      { title: "Master Data — WeaveOne" },
+      { title: "Master Data — SCKT ERP" },
       {
         name: "description",
         content:
           "Single-source master registers for yarn, item, party, beam, loom, broker, salesman, colour and process data.",
       },
-      { property: "og:title", content: "Master Data — WeaveOne" },
+      { property: "og:title", content: "Master Data — SCKT ERP" },
       {
         property: "og:description",
         content: "Centralised textile master data with rate history and de-duplicated records.",

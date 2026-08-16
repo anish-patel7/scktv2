@@ -12,13 +12,13 @@ import { searchFeederCrossReference } from "@/lib/design-store";
 export const Route = createFileRoute("/feeders")({
   head: () => ({
     meta: [
-      { title: "Feeder Cross-Reference — WeaveOne" },
+      { title: "Feeder Cross-Reference — SCKT ERP" },
       {
         name: "description",
         content:
-          "Feeder colourway management in WeaveOne, the textile fabric costing and manufacturing ERP platform.",
+          "Feeder colourway management in SCKT ERP, the textile fabric costing and manufacturing ERP platform.",
       },
-      { property: "og:title", content: "Feeder Cross-Reference — WeaveOne" },
+      { property: "og:title", content: "Feeder Cross-Reference — SCKT ERP" },
       {
         property: "og:description",
         content: "Feeder colourway management for textile weaving operations.",

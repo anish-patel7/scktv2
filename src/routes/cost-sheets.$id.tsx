@@ -6,13 +6,13 @@ import { getCostSheetById, ACCEPTANCE_TEST_SAMPLE } from "@/lib/cost-sheet-store
 export const Route = createFileRoute("/cost-sheets/$id")({
   head: () => ({
     meta: [
-      { title: "Cost Sheet — WeaveOne" },
+      { title: "Cost Sheet — SCKT ERP" },
       {
         name: "description",
         content:
           "Open a fabric cost sheet with its warp and weft lines, wastage, process charges, card cost and approval state.",
       },
-      { property: "og:title", content: "Cost Sheet — WeaveOne" },
+      { property: "og:title", content: "Cost Sheet — SCKT ERP" },
       {
         property: "og:description",
         content: "Versioned fabric costing with frozen rates and full approval attribution.",

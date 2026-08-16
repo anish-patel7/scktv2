@@ -24,13 +24,13 @@ import { uid, type CustomerItem } from "@/lib/sales-store";
 export const Route = createFileRoute("/sales/customers")({
   head: () => ({
     meta: [
-      { title: "Customer Directory & Credit Control — WeaveOne ERP" },
+      { title: "Customer Directory & Credit Control — SCKT ERP" },
       {
         name: "description",
         content:
           "Customer directory, credit limits, outstanding balances, credit status alerts, payment terms, and broker commission mapping.",
       },
-      { property: "og:title", content: "Customers — WeaveOne ERP" },
+      { property: "og:title", content: "Customers — SCKT ERP" },
       { property: "og:description", content: "Client accounts and credit limit governance." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

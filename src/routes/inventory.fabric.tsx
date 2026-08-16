@@ -25,13 +25,13 @@ import { uid, type FabricRollItem, type FabricStage, type QualityGrade, type Sto
 export const Route = createFileRoute("/inventory/fabric")({
   head: () => ({
     meta: [
-      { title: "Fabric & Warehouse Store — WeaveOne ERP" },
+      { title: "Fabric & Warehouse Store — SCKT ERP" },
       {
         name: "description",
         content:
           "Grey & finished fabric roll inventory, roll splitting lineage (BR-136), quality grading, and QR digital twin genealogy traceability.",
       },
-      { property: "og:title", content: "Fabric Store — WeaveOne ERP" },
+      { property: "og:title", content: "Fabric Store — SCKT ERP" },
       { property: "og:description", content: "Perpetual fabric roll store with roll splitting and end-to-end genealogy trace." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

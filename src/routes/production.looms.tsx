@@ -25,12 +25,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/production/looms")({
   head: () => ({
     meta: [
-      { title: "Loom Planning — WeaveOne" },
+      { title: "Loom Planning — SCKT ERP" },
       {
         name: "description",
         content: "Allocate weaving orders to looms, track utilisation, changeovers and maintenance on a live planning board.",
       },
-      { property: "og:title", content: "Loom Planning — WeaveOne" },
+      { property: "og:title", content: "Loom Planning — SCKT ERP" },
       { property: "og:description", content: "Loom allocation board with utilisation and changeover visibility." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

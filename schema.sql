@@ -70,6 +70,83 @@ CREATE TABLE IF NOT EXISTS public.masters (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.parties (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    party_code VARCHAR(50) NOT NULL UNIQUE,
+    party_name VARCHAR(200) NOT NULL,
+    party_type VARCHAR(50) NOT NULL DEFAULT 'Job Party' CHECK (party_type IN ('Purchase Party', 'Sell Party', 'Job Party')),
+    office_name VARCHAR(200),
+    address_line1 TEXT NOT NULL,
+    address_line2 TEXT,
+    area VARCHAR(100),
+    city VARCHAR(100) NOT NULL,
+    district VARCHAR(100),
+    state VARCHAR(100) NOT NULL,
+    pin_code VARCHAR(10) NOT NULL,
+    country VARCHAR(100) DEFAULT 'India',
+    contact_person VARCHAR(150),
+    designation VARCHAR(100),
+    mobile VARCHAR(20),
+    alternate_mobile VARCHAR(20),
+    email VARCHAR(255),
+    whatsapp_number VARCHAR(20),
+    gstin VARCHAR(15),
+    pan VARCHAR(10),
+    job_work_applicable VARCHAR(10) DEFAULT 'Yes',
+    job_work_remarks TEXT,
+    remarks TEXT,
+    status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive')),
+    created_by VARCHAR(150),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_by VARCHAR(150),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.party_sub_parties (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    party_id UUID REFERENCES public.parties(id) ON DELETE CASCADE,
+    sub_party_code VARCHAR(50) NOT NULL,
+    sub_party_name VARCHAR(200) NOT NULL,
+    party_type VARCHAR(50) NOT NULL CHECK (party_type IN ('Purchase Party', 'Sell Party', 'Job Party')),
+    location_type VARCHAR(50) NOT NULL,
+    location_type_other VARCHAR(100),
+    address_line1 TEXT NOT NULL,
+    address_line2 TEXT,
+    area VARCHAR(100),
+    city VARCHAR(100) NOT NULL,
+    district VARCHAR(100),
+    state VARCHAR(100) NOT NULL,
+    pin_code VARCHAR(10),
+    country VARCHAR(100) DEFAULT 'India',
+    gstin VARCHAR(15),
+    pan VARCHAR(10),
+    contact_person VARCHAR(150),
+    mobile VARCHAR(20),
+    alternate_mobile VARCHAR(20),
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    alternate_email VARCHAR(255),
+    billing_address TEXT,
+    shipping_address TEXT,
+    delivery_address TEXT,
+    is_default BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive')),
+    remarks TEXT,
+    internal_notes TEXT,
+    created_by VARCHAR(150),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    modified_by VARCHAR(150),
+    modified_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uk_party_sub_party_code UNIQUE (party_id, sub_party_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sub_parties_party_id ON public.party_sub_parties(party_id);
+CREATE INDEX IF NOT EXISTS idx_sub_parties_code ON public.party_sub_parties(sub_party_code);
+CREATE INDEX IF NOT EXISTS idx_sub_parties_name ON public.party_sub_parties(sub_party_name);
+CREATE INDEX IF NOT EXISTS idx_sub_parties_gstin ON public.party_sub_parties(gstin);
+CREATE INDEX IF NOT EXISTS idx_sub_parties_status ON public.party_sub_parties(status);
+
+
 CREATE TABLE IF NOT EXISTS public.cost_sheets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     code_number VARCHAR(50) NOT NULL UNIQUE, -- e.g. BYM-01
@@ -277,5 +354,66 @@ VALUES
     ('00000000-0000-0000-0000-000000000001', 'admin@weaveone.com', 'WeaveOne Admin', 'Rajesh', 'Shah', '+919876543210', 'EMP-001', 'Management', 'Managing Director', 'role-superadmin', 'ACTIVE', 'ADMIN_APPROVED', 'ADMIN_CREATED'),
     ('00000000-0000-0000-0000-000000000002', 'user@weaveone.com', 'WeaveOne Standard User', 'Standard', 'User', '+919825012345', 'EMP-002', 'Costing & Design', 'Senior Costing Executive', 'role-costing', 'ACTIVE', 'ADMIN_APPROVED', 'ADMIN_CREATED')
 ON CONFLICT (email) DO NOTHING;
+
+-- -----------------------------------------------------------------------------
+-- 8. WAREHOUSE MASTER & LOCATION HIERARCHY MODULE
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.warehouses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    warehouse_code VARCHAR(50) NOT NULL UNIQUE, -- e.g. WH-01, WH-02
+    warehouse_name VARCHAR(200) NOT NULL,
+    warehouse_type VARCHAR(100) NOT NULL DEFAULT 'General',
+    warehouse_type_other VARCHAR(200),
+    address_line_1 TEXT,
+    address_line_2 TEXT,
+    area VARCHAR(150),
+    city VARCHAR(100),
+    district VARCHAR(100),
+    state VARCHAR(100),
+    pincode VARCHAR(20),
+    country VARCHAR(100) DEFAULT 'India',
+    contact_person VARCHAR(150),
+    mobile VARCHAR(50),
+    phone VARCHAR(50),
+    email VARCHAR(150),
+    remarks TEXT,
+    status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Deactive')),
+    created_by VARCHAR(150),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_by VARCHAR(150),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_warehouses_code ON public.warehouses(warehouse_code);
+CREATE INDEX IF NOT EXISTS idx_warehouses_name ON public.warehouses(warehouse_name);
+CREATE INDEX IF NOT EXISTS idx_warehouses_type ON public.warehouses(warehouse_type);
+CREATE INDEX IF NOT EXISTS idx_warehouses_status ON public.warehouses(status);
+CREATE INDEX IF NOT EXISTS idx_warehouses_city ON public.warehouses(city);
+
+CREATE TABLE IF NOT EXISTS public.warehouse_locations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    warehouse_id UUID NOT NULL REFERENCES public.warehouses(id) ON DELETE RESTRICT,
+    location_code VARCHAR(50) NOT NULL, -- e.g. LOC-01, LOC-02
+    location_name VARCHAR(200) NOT NULL,
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Deactive')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uk_warehouse_location_code UNIQUE (warehouse_id, location_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_locations_warehouse_id ON public.warehouse_locations(warehouse_id);
+CREATE INDEX IF NOT EXISTS idx_locations_code ON public.warehouse_locations(location_code);
+CREATE INDEX IF NOT EXISTS idx_locations_status ON public.warehouse_locations(status);
+
+-- -----------------------------------------------------------------------------
+-- 9. ROW LEVEL SECURITY (RLS) CONFIGURATION FOR PUBLIC ERP DATA ACCESS
+-- -----------------------------------------------------------------------------
+-- Disable RLS on public tables to allow direct sync from frontend / anon key
+ALTER TABLE public.warehouses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.warehouse_locations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.parties DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.party_sub_parties DISABLE ROW LEVEL SECURITY;
 
 -- Complete Schema Successfully Created

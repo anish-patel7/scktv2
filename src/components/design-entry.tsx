@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   ArrowLeft,
-  ArrowRight,
   Plus,
   Trash2,
-  ArrowUp,
-  ArrowDown,
   Upload,
   X,
   Check,
   RotateCcw,
+  Sparkles,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import type { DesignWithDetails, BeamColour, Feeder } from "@/types/design";
 import { saveDesign, saveDraft, clearDraft } from "@/lib/design-store";
+import { getLocalYarnMaterials } from "@/lib/material-store";
 
 interface DesignEntryProps {
   initialDesign?: DesignWithDetails | null | undefined;
@@ -44,17 +44,6 @@ interface DesignEntryProps {
   onBack: () => void;
   onSaveSuccess: (saved: DesignWithDetails) => void;
 }
-
-const BEAM_COLOUR_SUGGESTIONS = [
-  "50/600 P.Blue Poly",
-  "50/600 Firozi",
-  "50/600 P.Green Poly",
-  "50/600 Gajri",
-  "50/600 Rani Poly",
-  "50/600 Gold Lurex",
-  "100/144 White Cotton",
-  "150/48 Polyester Viscose",
-];
 
 const WORK_TYPES = [
   "Jacquard Pashmina",
@@ -66,12 +55,28 @@ const WORK_TYPES = [
   "Zari Border",
 ];
 
+export interface BeamColourColumn {
+  id: string;
+  beamColourName: string;
+  displayOrder: number;
+}
+
+export interface FeederMatrixRow {
+  id: string;
+  feederNumber: string;
+  pick: string;
+  card: string;
+  beamColourValues: Record<string, string>;
+  displayOrder: number;
+}
+
 export function DesignEntry({
   initialDesign,
   isClone = false,
   onBack,
   onSaveSuccess,
 }: DesignEntryProps) {
+  // 1. Design Header Form State
   const [designNumber, setDesignNumber] = useState(
     isClone ? "" : initialDesign?.designNumber || ""
   );
@@ -81,8 +86,6 @@ export function DesignEntry({
   const [dn, setDn] = useState(initialDesign?.dn || "");
   const [dnCode, setDnCode] = useState(initialDesign?.dnCode || "");
   const [reed, setReed] = useState<string>(initialDesign?.reed !== undefined ? String(initialDesign.reed) : "");
-  const [pick, setPick] = useState<string>(initialDesign?.pick !== undefined ? String(initialDesign.pick) : "");
-  const [cards, setCards] = useState<string>(initialDesign?.cards !== undefined ? String(initialDesign.cards) : "");
   const [patti, setPatti] = useState<string>(initialDesign?.patti !== undefined ? String(initialDesign.patti) : "");
   const [totalDC, setTotalDC] = useState<string>(initialDesign?.totalDC !== undefined ? String(initialDesign.totalDC) : "");
   const [totalCut, setTotalCut] = useState<string>(initialDesign?.totalCut !== undefined ? String(initialDesign.totalCut) : "");
@@ -92,41 +95,80 @@ export function DesignEntry({
   const [remarks, setRemarks] = useState(initialDesign?.remarks || "");
   const [image, setImage] = useState(initialDesign?.image || "");
 
-  const [beamColours, setBeamColours] = useState<BeamColour[]>(() => {
+  // 2. Feeder × Beam Colour Matrix State
+  const [beamColourColumns, setBeamColourColumns] = useState<BeamColourColumn[]>(() => {
     if (initialDesign && initialDesign.beamColours && initialDesign.beamColours.length > 0) {
-      return initialDesign.beamColours.map((bc, bIdx) => ({
-        ...bc,
-        feeders: bc.feeders.map((f, fIdx) => ({
-          ...f,
-          feederNumber: `FDR-${fIdx + 1}`,
-          displayOrder: fIdx + 1,
-        })),
+      return initialDesign.beamColours.map((bc, idx) => ({
+        id: bc.id,
+        beamColourName: bc.beamColour,
+        displayOrder: idx + 1,
       }));
     }
-    // Default 1 initial beam colour with 1 feeder
+    return [
+      { id: "bc-1", beamColourName: "BEAM COLOUR #1", displayOrder: 1 },
+    ];
+  });
+
+  const [feederRows, setFeederRows] = useState<FeederMatrixRow[]>(() => {
+    if (initialDesign && initialDesign.beamColours && initialDesign.beamColours.length > 0) {
+      // Find all unique feeder numbers across beam colours
+      const feederMap: Record<string, { id: string; feederNumber: string; pick: string; card: string; values: Record<string, string>; order: number }> = {};
+
+      initialDesign.beamColours.forEach((bc) => {
+        bc.feeders.forEach((f, fIdx) => {
+          const num = f.feederNumber || `FDR-${fIdx + 1}`;
+          if (!feederMap[num]) {
+            feederMap[num] = {
+              id: f.id || `fdr-${num}`,
+              feederNumber: num,
+              pick: f.pick !== undefined ? String(f.pick) : initialDesign.pick !== undefined ? String(initialDesign.pick) : "160",
+              card: f.card !== undefined ? String(f.card) : initialDesign.cards !== undefined ? String(initialDesign.cards) : "64",
+              values: {},
+              order: fIdx + 1,
+            };
+          }
+          feederMap[num].values[bc.id] = f.colorName || "";
+        });
+      });
+
+      const sortedRows = Object.values(feederMap).sort((a, b) => a.order - b.order);
+      if (sortedRows.length > 0) {
+        return sortedRows.map((r, idx) => ({
+          id: r.id,
+          feederNumber: `FDR-${idx + 1}`,
+          pick: r.pick,
+          card: r.card,
+          beamColourValues: r.values,
+          displayOrder: idx + 1,
+        }));
+      }
+    }
+
+    // Default 1 initial feeder row
     return [
       {
-        id: `bc-${Date.now()}-1`,
-        designId: "",
-        beamColour: "50/600 P.Blue Poly",
+        id: "fdr-1",
+        feederNumber: "FDR-1",
+        pick: "160",
+        card: "64",
+        beamColourValues: { "bc-1": "110/72 N.Blue" },
         displayOrder: 1,
-        feeders: [
-          {
-            id: `fdr-${Date.now()}-1`,
-            beamColourId: `bc-${Date.now()}-1`,
-            feederNumber: "FDR-1",
-            colorName: "110/72 N.Blue",
-            oldNumber: "5831",
-            displayOrder: 1,
-          },
-        ],
       },
     ];
   });
 
-  const [bcToRemove, setBcToRemove] = useState<string | null>(null);
+  // Modal states for removal confirmations
+  const [feederToRemove, setFeederToRemove] = useState<FeederMatrixRow | null>(null);
+  const [colToRemove, setColToRemove] = useState<BeamColourColumn | null>(null);
+
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Available Yarn suggestions from Yarn Master
+  const yarnSuggestions = useMemo(() => {
+    const yarns = getLocalYarnMaterials();
+    return yarns.map((y) => (y.denier ? `${y.denier}D ${y.name}` : y.name));
+  }, []);
 
   // Auto-save draft logic
   useEffect(() => {
@@ -136,8 +178,6 @@ export function DesignEntry({
       dn: dn || undefined,
       dnCode: dnCode || undefined,
       reed: reed ? Number(reed) : undefined,
-      pick: pick ? Number(pick) : undefined,
-      cards: cards ? Number(cards) : undefined,
       patti: patti ? Number(patti) : undefined,
       totalDC: totalDC ? Number(totalDC) : undefined,
       totalCut: totalCut ? Number(totalCut) : undefined,
@@ -146,7 +186,6 @@ export function DesignEntry({
       description: description || undefined,
       remarks: remarks || undefined,
       image: image || undefined,
-      beamColours,
     };
 
     const timer = setTimeout(() => {
@@ -160,8 +199,6 @@ export function DesignEntry({
     dn,
     dnCode,
     reed,
-    pick,
-    cards,
     patti,
     totalDC,
     totalCut,
@@ -170,7 +207,6 @@ export function DesignEntry({
     description,
     remarks,
     image,
-    beamColours,
   ]);
 
   // Image Upload handler
@@ -196,151 +232,103 @@ export function DesignEntry({
     reader.readAsDataURL(file);
   };
 
-  // Add Beam Colour
-  const addBeamColour = () => {
-    const newBcId = `bc-${Date.now()}-${beamColours.length + 1}`;
-    const newBc: BeamColour = {
-      id: newBcId,
-      designId: initialDesign?.id || "",
-      beamColour: BEAM_COLOUR_SUGGESTIONS[beamColours.length % BEAM_COLOUR_SUGGESTIONS.length] || "50/600 P.Blue Poly",
-      displayOrder: beamColours.length + 1,
-      feeders: [
-        {
-          id: `fdr-${Date.now()}-1`,
-          beamColourId: newBcId,
-          feederNumber: "FDR-1",
-          colorName: "",
-          oldNumber: "",
-          displayOrder: 1,
-        },
-      ],
+  // Matrix Action: + Add Feeder
+  const handleAddFeeder = () => {
+    const nextNum = feederRows.length + 1;
+    const newFeederNumber = `FDR-${nextNum}`;
+    const newRow: FeederMatrixRow = {
+      id: `fdr-${Date.now()}-${nextNum}`,
+      feederNumber: newFeederNumber,
+      pick: "", // blank by default per section 6
+      card: "", // blank by default per section 6
+      beamColourValues: {},
+      displayOrder: nextNum,
     };
-    setBeamColours([...beamColours, newBc]);
-    toast.success("Added new Beam Colour section");
+
+    setFeederRows([...feederRows, newRow]);
+    toast.success(`Added Feeder ${newFeederNumber}`);
   };
 
-  // Remove Beam Colour
+  // Matrix Action: + Add Beam Colour
+  const handleAddBeamColour = () => {
+    const nextNum = beamColourColumns.length + 1;
+    const newColId = `bc-${Date.now()}-${nextNum}`;
+    const newColName = `BEAM COLOUR #${nextNum}`;
+    const newCol: BeamColourColumn = {
+      id: newColId,
+      beamColourName: newColName,
+      displayOrder: nextNum,
+    };
+
+    setBeamColourColumns([...beamColourColumns, newCol]);
+    toast.success(`Added ${newColName}`);
+  };
+
+  // Remove Feeder Handler (with auto-renumbering FDR-1, FDR-2...)
+  const confirmRemoveFeeder = () => {
+    if (!feederToRemove) return;
+
+    const filtered = feederRows.filter((r) => r.id !== feederToRemove.id);
+    const renumbered = filtered.map((r, idx) => ({
+      ...r,
+      feederNumber: `FDR-${idx + 1}`,
+      displayOrder: idx + 1,
+    }));
+
+    setFeederRows(renumbered);
+    setFeederToRemove(null);
+    toast.success(`Removed ${feederToRemove.feederNumber}`);
+  };
+
+  // Remove Beam Colour Column Handler
   const confirmRemoveBeamColour = () => {
-    if (!bcToRemove) return;
-    setBeamColours(
-      beamColours
-        .filter((bc) => bc.id !== bcToRemove)
-        .map((bc, idx) => ({ ...bc, displayOrder: idx + 1 }))
-    );
-    setBcToRemove(null);
-    toast.success("Beam Colour removed");
+    if (!colToRemove) return;
+
+    const filteredCols = beamColourColumns.filter((c) => c.id !== colToRemove.id);
+    const reorderedCols = filteredCols.map((c, idx) => ({
+      ...c,
+      displayOrder: idx + 1,
+    }));
+
+    // Remove cell values for this column from feeder rows
+    const updatedRows = feederRows.map((r) => {
+      const copy = { ...r.beamColourValues };
+      delete copy[colToRemove.id];
+      return { ...r, beamColourValues: copy };
+    });
+
+    setBeamColourColumns(reorderedCols);
+    setFeederRows(updatedRows);
+    setColToRemove(null);
+    toast.success(`Removed Beam Colour column`);
   };
 
-  // Move Beam Colour
-  const moveBeamColour = (index: number, direction: "up" | "down") => {
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === beamColours.length - 1)
-    ) {
-      return;
-    }
-    const targetIdx = direction === "up" ? index - 1 : index + 1;
-    const updated = [...beamColours];
-    const current = updated[index];
-    const target = updated[targetIdx];
-    if (current && target) {
-      updated[index] = target;
-      updated[targetIdx] = current;
-      setBeamColours(updated.map((bc, idx) => ({ ...bc, displayOrder: idx + 1 })));
-    }
-  };
-
-  // Add Feeder inside a Beam Colour
-  const addFeeder = (beamColourId: string) => {
-    setBeamColours(
-      beamColours.map((bc) => {
-        if (bc.id !== beamColourId) return bc;
-        const newFeederIdx = bc.feeders.length + 1;
-        const newFeeder: Feeder = {
-          id: `fdr-${Date.now()}-${newFeederIdx}`,
-          beamColourId,
-          feederNumber: `FDR-${newFeederIdx}`,
-          colorName: "",
-          oldNumber: "",
-          displayOrder: newFeederIdx,
-        };
+  // Cell Value Change Handler
+  const handleCellValueChange = (feederId: string, colId: string, value: string) => {
+    setFeederRows(
+      feederRows.map((r) => {
+        if (r.id !== feederId) return r;
         return {
-          ...bc,
-          feeders: [...bc.feeders, newFeeder],
+          ...r,
+          beamColourValues: {
+            ...r.beamColourValues,
+            [colId]: value,
+          },
         };
       })
     );
   };
 
-  // Update Feeder field
-  const updateFeeder = (
-    beamColourId: string,
+  // Feeder Pick / Card Change Handler
+  const handleFeederFieldValueChange = (
     feederId: string,
-    field: "colorName" | "oldNumber",
+    field: "pick" | "card",
     value: string
   ) => {
-    setBeamColours(
-      beamColours.map((bc) => {
-        if (bc.id !== beamColourId) return bc;
-        return {
-          ...bc,
-          feeders: bc.feeders.map((f) => {
-            if (f.id !== feederId) return f;
-            return { ...f, [field]: value };
-          }),
-        };
-      })
-    );
-  };
-
-  // Move Feeder left/right inside a Beam Colour
-  const moveFeeder = (beamColourId: string, index: number, direction: "left" | "right" | "up" | "down") => {
-    setBeamColours(
-      beamColours.map((bc) => {
-        if (bc.id !== beamColourId) return bc;
-        const isPrev = direction === "left" || direction === "up";
-        const isNext = direction === "right" || direction === "down";
-        if (
-          (isPrev && index === 0) ||
-          (isNext && index === bc.feeders.length - 1)
-        ) {
-          return bc;
-        }
-        const targetIdx = isPrev ? index - 1 : index + 1;
-        const updatedFeeders = [...bc.feeders];
-        const currentF = updatedFeeders[index];
-        const targetF = updatedFeeders[targetIdx];
-
-        if (currentF && targetF) {
-          updatedFeeders[index] = targetF;
-          updatedFeeders[targetIdx] = currentF;
-        }
-
-        // Auto-renumber feeders
-        const renumbered = updatedFeeders.map((f, idx) => ({
-          ...f,
-          feederNumber: `FDR-${idx + 1}`,
-          displayOrder: idx + 1,
-        }));
-
-        return { ...bc, feeders: renumbered };
-      })
-    );
-  };
-
-  // Remove Feeder
-  const removeFeeder = (beamColourId: string, feederId: string) => {
-    setBeamColours(
-      beamColours.map((bc) => {
-        if (bc.id !== beamColourId) return bc;
-        const filtered = bc.feeders.filter((f) => f.id !== feederId);
-        // Auto-renumber feeders
-        const renumbered = filtered.map((f, idx) => ({
-          ...f,
-          feederNumber: `FDR-${idx + 1}`,
-          displayOrder: idx + 1,
-        }));
-        return { ...bc, feeders: renumbered };
+    setFeederRows(
+      feederRows.map((r) => {
+        if (r.id !== feederId) return r;
+        return { ...r, [field]: value };
       })
     );
   };
@@ -356,25 +344,58 @@ export function DesignEntry({
       return;
     }
 
-    // Validate beam colours
-    for (let i = 0; i < beamColours.length; i++) {
-      const bc = beamColours[i];
-      if (!bc || !bc.beamColour.trim()) {
-        toast.error(`Beam Colour #${i + 1} must have a name.`);
+    if (feederRows.length === 0) {
+      toast.error("At least one Feeder row is required.");
+      return;
+    }
+
+    if (beamColourColumns.length === 0) {
+      toast.error("At least one Beam Colour column is required.");
+      return;
+    }
+
+    // Validate Feeder Pick and Card values
+    for (let i = 0; i < feederRows.length; i++) {
+      const row = feederRows[i];
+      if (!row || !row.pick || isNaN(Number(row.pick)) || Number(row.pick) <= 0) {
+        toast.error(`Feeder ${row?.feederNumber || i + 1} requires a valid positive Pick value.`);
         return;
       }
-      if (bc.feeders.length === 0) {
-        toast.error(`Beam Colour "${bc.beamColour}" must have at least one feeder entry.`);
+      if (!row.card || isNaN(Number(row.card)) || Number(row.card) <= 0) {
+        toast.error(`Feeder ${row?.feederNumber || i + 1} requires a valid positive Card value.`);
         return;
-      }
-      for (let j = 0; j < bc.feeders.length; j++) {
-        const f = bc.feeders[j];
-        if (!f || !f.colorName.trim()) {
-          toast.error(`Feeder ${f?.feederNumber || j + 1} in Beam Colour "${bc.beamColour}" requires a Color Name.`);
-          return;
-        }
       }
     }
+
+    // Validate Beam Colour column names
+    for (let i = 0; i < beamColourColumns.length; i++) {
+      const col = beamColourColumns[i];
+      if (!col || !col.beamColourName.trim()) {
+        toast.error(`Beam Colour #${i + 1} column name cannot be empty.`);
+        return;
+      }
+    }
+
+    // Map matrix state into BeamColour[] format for storage
+    const beamColoursPayload: BeamColour[] = beamColourColumns.map((col) => {
+      const feedersPayload: Feeder[] = feederRows.map((row) => ({
+        id: `${row.id}-${col.id}`,
+        beamColourId: col.id,
+        feederNumber: row.feederNumber,
+        pick: Number(row.pick),
+        card: Number(row.card),
+        colorName: row.beamColourValues[col.id] || "",
+        displayOrder: row.displayOrder,
+      }));
+
+      return {
+        id: col.id,
+        designId: initialDesign?.id || "",
+        beamColour: col.beamColourName.trim(),
+        displayOrder: col.displayOrder,
+        feeders: feedersPayload,
+      };
+    });
 
     try {
       const payload = {
@@ -384,8 +405,6 @@ export function DesignEntry({
         dn: dn.trim() || undefined,
         dnCode: dnCode.trim() || undefined,
         reed: reed ? Number(reed) : undefined,
-        pick: pick ? Number(pick) : undefined,
-        cards: cards ? Number(cards) : undefined,
         patti: patti ? Number(patti) : undefined,
         totalDC: totalDC ? Number(totalDC) : undefined,
         totalCut: totalCut ? Number(totalCut) : undefined,
@@ -394,7 +413,7 @@ export function DesignEntry({
         description: description.trim() || undefined,
         remarks: remarks.trim() || undefined,
         image: image || undefined,
-        beamColours,
+        beamColours: beamColoursPayload,
       };
 
       const saved = saveDesign(payload);
@@ -435,22 +454,22 @@ export function DesignEntry({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onBack}>
+          <Button variant="outline" size="sm" onClick={onBack} className="h-8 text-xs">
             Discard
           </Button>
-          <Button size="sm" onClick={handleSave} className="gap-1">
+          <Button size="sm" onClick={handleSave} className="h-8 gap-1 text-xs font-semibold">
             <Check className="size-4" /> Save Design
           </Button>
         </div>
       </div>
 
-      {/* 1. Design Information Card */}
+      {/* 1. Design Information Card (Without Global Pick & Cards fields) */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Design Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Row 1: Number, Name, Image Upload */}
+          {/* Row 1: Number, Name, Work Type */}
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-1.5">
               <Label htmlFor="designNumber">
@@ -461,6 +480,7 @@ export function DesignEntry({
                 placeholder="e.g. D-015"
                 value={designNumber}
                 onChange={(e) => setDesignNumber(e.target.value)}
+                className="font-mono font-bold text-primary"
               />
             </div>
 
@@ -473,6 +493,7 @@ export function DesignEntry({
                 placeholder="e.g. Kashmiri Pashmina"
                 value={designName}
                 onChange={(e) => setDesignName(e.target.value)}
+                className="font-semibold"
               />
             </div>
 
@@ -507,7 +528,7 @@ export function DesignEntry({
                 setIsDragOver(false);
                 if (e.dataTransfer.files?.[0]) handleImageFile(e.dataTransfer.files[0]);
               }}
-              className={`relative flex min-h-28 flex-col items-center justify-center rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
+              className={`relative flex min-h-24 flex-col items-center justify-center rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
                 isDragOver
                   ? "border-primary bg-primary/5"
                   : image
@@ -569,60 +590,48 @@ export function DesignEntry({
             </div>
           </div>
 
-          {/* Technical Specs Rows */}
+          {/* Technical Specs Rows (Reed, Patti, Total DC, Total Cut) */}
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="dn">DN Number</Label>
-              <Input id="dn" placeholder="e.g. DN-440" value={dn} onChange={(e) => setDn(e.target.value)} />
+              <Input id="dn" placeholder="e.g. DN-440" value={dn} onChange={(e) => setDn(e.target.value)} className="font-mono text-xs" />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="dnCode">DN Code</Label>
-              <Input id="dnCode" placeholder="e.g. DN-440-KASH" value={dnCode} onChange={(e) => setDnCode(e.target.value)} />
+              <Input id="dnCode" placeholder="e.g. DN-440-KASH" value={dnCode} onChange={(e) => setDnCode(e.target.value)} className="font-mono text-xs" />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="reed">Reed</Label>
-              <Input id="reed" type="number" placeholder="120" value={reed} onChange={(e) => setReed(e.target.value)} />
+              <Input id="reed" type="number" placeholder="120" value={reed} onChange={(e) => setReed(e.target.value)} className="font-mono text-xs" />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="pick">Pick</Label>
-              <Input id="pick" type="number" placeholder="160" value={pick} onChange={(e) => setPick(e.target.value)} />
+              <Label htmlFor="patti">Patti</Label>
+              <Input id="patti" type="number" placeholder="12" value={patti} onChange={(e) => setPatti(e.target.value)} className="font-mono text-xs" />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
             <div className="space-y-1.5">
-              <Label htmlFor="cards">Cards</Label>
-              <Input id="cards" type="number" placeholder="64" value={cards} onChange={(e) => setCards(e.target.value)} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="patti">Patti</Label>
-              <Input id="patti" type="number" placeholder="12" value={patti} onChange={(e) => setPatti(e.target.value)} />
-            </div>
-
-            <div className="space-y-1.5">
               <Label htmlFor="totalDC">Total D.C.</Label>
-              <Input id="totalDC" type="number" placeholder="14400" value={totalDC} onChange={(e) => setTotalDC(e.target.value)} />
+              <Input id="totalDC" type="number" placeholder="14400" value={totalDC} onChange={(e) => setTotalDC(e.target.value)} className="font-mono text-xs" />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="totalCut">Total Cut</Label>
-              <Input id="totalCut" type="number" placeholder="4" value={totalCut} onChange={(e) => setTotalCut(e.target.value)} />
+              <Input id="totalCut" type="number" placeholder="4" value={totalCut} onChange={(e) => setTotalCut(e.target.value)} className="font-mono text-xs" />
             </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="blueApt">Blue + APT</Label>
-              <Input id="blueApt" placeholder="e.g. Blue-99 / APT-A" value={blueApt} onChange={(e) => setBlueApt(e.target.value)} />
+              <Input id="blueApt" placeholder="e.g. Blue-99 / APT-A" value={blueApt} onChange={(e) => setBlueApt(e.target.value)} className="text-xs" />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="remarks">Remarks</Label>
-              <Input id="remarks" placeholder="Special weaving instructions or notes..." value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+              <Input id="remarks" placeholder="Special instructions..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="text-xs" />
             </div>
           </div>
 
@@ -634,185 +643,225 @@ export function DesignEntry({
               placeholder="Comprehensive description of design construction..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="text-xs"
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* 2. BEAM COLOUR & FEEDER PROGRAM */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      {/* 2. CONSOLIDATED FEEDER × BEAM COLOUR MATRIX */}
+      <Card className="border-primary/20 bg-card shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border py-3">
           <div>
-            <h3 className="text-base font-semibold">BEAM COLOUR & FEEDER PROGRAM</h3>
-            <p className="text-xs text-muted-foreground">
-              Define Beam Colours and their respective Feeder sequences. Feeder numbers are automatically managed.
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Layers className="size-4 text-primary" /> FEEDER PROGRAM & BEAM COLOUR MATRIX
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Manage Feeder rows with fixed Feeder Pick and Card values against dynamic Beam Colour columns.
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={addBeamColour} className="gap-1">
-            <Plus className="size-4" /> Add Beam Colour
-          </Button>
-        </div>
 
-        {beamColours.map((bc, bcIdx) => (
-          <Card key={bc.id} className="border-primary/20 bg-card">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-border py-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="font-mono text-xs font-semibold">
-                  BEAM COLOUR #{bcIdx + 1}
-                </Badge>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6"
-                    disabled={bcIdx === 0}
-                    onClick={() => moveBeamColour(bcIdx, "up")}
-                    title="Move Beam Colour Up"
-                  >
-                    <ArrowUp className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6"
-                    disabled={bcIdx === beamColours.length - 1}
-                    onClick={() => moveBeamColour(bcIdx, "down")}
-                    title="Move Beam Colour Down"
-                  >
-                    <ArrowDown className="size-3.5" />
-                  </Button>
-                </div>
-              </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handleAddFeeder} className="h-8 text-xs gap-1 font-semibold">
+              <Plus className="size-3.5" /> + Add Feeder
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleAddBeamColour} className="h-8 text-xs gap-1 font-semibold">
+              <Plus className="size-3.5" /> + Add Beam Colour
+            </Button>
+          </div>
+        </CardHeader>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setBcToRemove(bc.id)}
+        <CardContent className="p-4 space-y-4">
+          {/* Responsive Matrix Table Container with Horizontal Scroll */}
+          <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+            <table className="w-full min-w-[700px] border-collapse text-xs">
+              <thead>
+                <tr className="bg-muted/70 border-b border-border font-semibold text-muted-foreground">
+                  <th className="border-r border-border px-3 py-2 text-left min-w-[100px] font-bold text-foreground">
+                    FEEDER
+                  </th>
+                  <th className="border-r border-border px-3 py-2 text-center min-w-[90px] font-bold text-foreground">
+                    PICK *
+                  </th>
+                  <th className="border-r border-border px-3 py-2 text-center min-w-[90px] font-bold text-foreground">
+                    CARD *
+                  </th>
+
+                  {/* Beam Colour Columns */}
+                  {beamColourColumns.map((col, colIdx) => (
+                    <th key={col.id} className="border-r border-border px-3 py-2 min-w-[180px]">
+                      <div className="flex items-center justify-between gap-1">
+                        <Input
+                          value={col.beamColourName}
+                          onChange={(e) =>
+                            setBeamColourColumns(
+                              beamColourColumns.map((c) =>
+                                c.id === col.id ? { ...c, beamColourName: e.target.value } : c
+                              )
+                            )
+                          }
+                          className="h-7 text-xs font-bold text-primary bg-background border-border text-center"
+                          placeholder={`BEAM COLOUR #${colIdx + 1}`}
+                          list={`yarn-suggestions-${col.id}`}
+                        />
+                        <datalist id={`yarn-suggestions-${col.id}`}>
+                          {yarnSuggestions.map((y, idx) => (
+                            <option key={idx} value={y} />
+                          ))}
+                        </datalist>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => setColToRemove(col)}
+                          title="Remove Beam Colour Column"
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    </th>
+                  ))}
+
+                  <th className="px-2 py-2 text-center min-w-[60px]">ACTION</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {feederRows.map((row, rIdx) => (
+                  <tr key={row.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                    {/* FEEDER Label */}
+                    <td className="border-r border-border p-2 font-mono font-bold text-primary text-left">
+                      <Badge variant="outline" className="font-mono font-bold text-xs bg-primary/10 text-primary border-primary/30">
+                        {row.feederNumber}
+                      </Badge>
+                    </td>
+
+                    {/* PICK Input */}
+                    <td className="border-r border-border p-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="Pick"
+                        value={row.pick}
+                        onChange={(e) => handleFeederFieldValueChange(row.id, "pick", e.target.value)}
+                        className="h-8 text-xs font-mono font-bold text-center border-border"
+                      />
+                    </td>
+
+                    {/* CARD Input */}
+                    <td className="border-r border-border p-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="Card"
+                        value={row.card}
+                        onChange={(e) => handleFeederFieldValueChange(row.id, "card", e.target.value)}
+                        className="h-8 text-xs font-mono font-bold text-center border-border"
+                      />
+                    </td>
+
+                    {/* Beam Colour Cell Inputs */}
+                    {beamColourColumns.map((col) => (
+                      <td key={col.id} className="border-r border-border p-2">
+                        <Input
+                          placeholder="e.g. 110/72 N.Blue"
+                          value={row.beamColourValues[col.id] || ""}
+                          onChange={(e) => handleCellValueChange(row.id, col.id, e.target.value)}
+                          className="h-8 text-xs text-center font-medium bg-background"
+                          list={`yarn-cell-suggestions-${row.id}-${col.id}`}
+                        />
+                        <datalist id={`yarn-cell-suggestions-${row.id}-${col.id}`}>
+                          {yarnSuggestions.map((y, idx) => (
+                            <option key={idx} value={y} />
+                          ))}
+                        </datalist>
+                      </td>
+                    ))}
+
+                    {/* Remove Feeder Action */}
+                    <td className="p-2 text-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setFeederToRemove(row)}
+                        title={`Remove ${row.feederNumber}`}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+
+                {!feederRows.length && (
+                  <tr>
+                    <td colSpan={4 + beamColourColumns.length} className="py-8 text-center text-muted-foreground">
+                      <p className="text-xs font-semibold">No feeder rows added yet.</p>
+                      <p className="text-[0.6875rem] text-muted-foreground">Click "+ Add Feeder" to add a feeder row.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Remove Feeder Confirmation Dialog */}
+      <AlertDialog open={Boolean(feederToRemove)} onOpenChange={(open) => !open && setFeederToRemove(null)}>
+        {feederToRemove && (
+          <AlertDialogContent className="max-w-md text-xs">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-base font-bold">
+                Remove Feeder {feederToRemove.feederNumber}?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground pt-1">
+                Are you sure you want to remove <strong>{feederToRemove.feederNumber}</strong>? Remaining feeders will be automatically re-sequenced.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel onClick={() => setFeederToRemove(null)} className="h-8 text-xs">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmRemoveFeeder}
+                className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
               >
-                <Trash2 className="mr-1 size-3.5" /> Remove
-              </Button>
-            </CardHeader>
+                Remove Feeder
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
 
-            <CardContent className="space-y-4 pt-4">
-              <div className="max-w-md space-y-1.5">
-                <Label htmlFor={`bc-name-${bc.id}`}>Beam Colour Name *</Label>
-                <Input
-                  id={`bc-name-${bc.id}`}
-                  placeholder="e.g. 50/600 P.Blue Poly"
-                  value={bc.beamColour}
-                  onChange={(e) =>
-                    setBeamColours(
-                      beamColours.map((b) => (b.id === bc.id ? { ...b, beamColour: e.target.value } : b))
-                    )
-                  }
-                />
-              </div>
-
-              {/* Feeder Program Horizontal Grid Table */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    FEEDER PROGRAM
-                  </h4>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => addFeeder(bc.id)}
-                  >
-                    <Plus className="size-3" /> Add Feeder
-                  </Button>
-                </div>
-
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                  <table className="w-full min-w-max border-collapse text-xs text-center">
-                    <thead>
-                      <tr className="bg-muted/60 border-b border-border">
-                        {bc.feeders.map((f) => (
-                          <th key={f.id} className="border-r border-border px-3 py-2 font-mono font-bold text-primary min-w-[140px]">
-                            {f.feederNumber}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-border">
-                        {bc.feeders.map((f) => (
-                          <td key={f.id} className="border-r border-border p-2">
-                            <Input
-                              className="h-9 text-xs text-center font-medium"
-                              placeholder="e.g. 110/72 N.Blue"
-                              value={f.colorName}
-                              onChange={(e) =>
-                                updateFeeder(bc.id, f.id, "colorName", e.target.value)
-                              }
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="bg-muted/20">
-                        {bc.feeders.map((f, fIdx) => (
-                          <td key={f.id} className="border-r border-border p-1.5 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-6"
-                                disabled={fIdx === 0}
-                                onClick={() => moveFeeder(bc.id, fIdx, "left")}
-                                title="Move Left"
-                              >
-                                <ArrowLeft className="size-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-6"
-                                disabled={fIdx === bc.feeders.length - 1}
-                                onClick={() => moveFeeder(bc.id, fIdx, "right")}
-                                title="Move Right"
-                              >
-                                <ArrowRight className="size-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-6 text-destructive hover:bg-destructive/10"
-                                onClick={() => removeFeeder(bc.id, f.id)}
-                                title="Delete Feeder"
-                              >
-                                <X className="size-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Remove Beam Colour Confirmation Dialog */}
-      <AlertDialog open={Boolean(bcToRemove)} onOpenChange={(open) => !open && setBcToRemove(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove Beam Colour?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the Beam Colour and all feeder program entries belonging to it. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRemoveBeamColour} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+      {/* Remove Beam Colour Column Confirmation Dialog */}
+      <AlertDialog open={Boolean(colToRemove)} onOpenChange={(open) => !open && setColToRemove(null)}>
+        {colToRemove && (
+          <AlertDialogContent className="max-w-md text-xs">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-base font-bold">
+                Remove {colToRemove.beamColourName}?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground pt-1">
+                Are you sure you want to remove <strong>{colToRemove.beamColourName}</strong> and all feeder entries in this column? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel onClick={() => setColToRemove(null)} className="h-8 text-xs">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmRemoveBeamColour}
+                className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
+              >
+                Remove Column
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
       </AlertDialog>
     </div>
   );

@@ -23,6 +23,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { fmt } from "@/lib/costing";
 import { getLocalYarnMaterials, type YarnMaterial } from "@/lib/material-store";
 import { PartyMasterView } from "@/components/party-master-view";
+import { YarnMasterView } from "@/components/yarn-master-view";
+import { WarehouseMasterView } from "@/components/warehouse-master-view";
 
 interface GenericMasterItem {
   id: string;
@@ -104,6 +106,7 @@ function MasterPage() {
   const meta = MASTER_TYPES.find((m) => m.type === type);
   const isMaterial = type === "material";
   const isParty = type === "party";
+  const isWarehouse = type === "warehouse";
 
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -177,6 +180,17 @@ function MasterPage() {
     });
   }, [dbData, search]);
 
+  if (isWarehouse) {
+    return (
+      <AppShell
+        title="Warehouse Master"
+        breadcrumb={[{ label: "Masters" }, { label: "Warehouse" }]}
+      >
+        <WarehouseMasterView />
+      </AppShell>
+    );
+  }
+
   if (isParty) {
     return (
       <AppShell
@@ -186,6 +200,10 @@ function MasterPage() {
         <PartyMasterView />
       </AppShell>
     );
+  }
+
+  if (isMaterial) {
+    return <YarnMasterView />;
   }
 
   const handleOpenCreate = () => {

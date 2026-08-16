@@ -4,6 +4,8 @@ export interface Feeder {
   feederNumber: string;
   colorName: string;
   oldNumber?: string | undefined;
+  pick?: number | undefined;
+  card?: number | undefined;
   displayOrder: number;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;

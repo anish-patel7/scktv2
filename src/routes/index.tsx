@@ -82,7 +82,7 @@ function Dashboard() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Cost sheets" value={String(data?.sheets.length ?? 0)} sub="Most recent activity" />
         <Kpi label="Pending approval" value={String(pending)} sub="Awaiting authorised approver" />
-        <Kpi label="Yarn / materials" value={String(data?.materialCount ?? 0)} sub="Single rate source" />
+        <Kpi label="Yarn" value={String(data?.materialCount ?? 0)} sub="Single rate source" />
         <Kpi
           label="Avg yarn rate"
           value={`₹ ${fmt(data?.avgRate ?? 0)}`}

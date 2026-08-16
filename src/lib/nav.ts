@@ -10,9 +10,10 @@ export type NavGroup = {
 };
 
 export const MASTER_TYPES = [
-  { type: "material", label: "Yarn / Material" },
+  { type: "material", label: "Yarn" },
   { type: "item", label: "Item" },
   { type: "party", label: "Party" },
+  { type: "warehouse", label: "Warehouse" },
   { type: "jobwork_party", label: "Job Work Party" },
   { type: "beam", label: "Beam" },
   { type: "loom", label: "Loom" },

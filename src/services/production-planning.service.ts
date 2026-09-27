@@ -636,9 +636,152 @@ const inMemoryReleasePreviews = new Map<string, ProductionReleasePreview[]>();
 const inMemoryJobCardDrafts = new Map<string, JobCardDraft[]>();
 const inMemoryIssuePreparations = new Map<string, JobCardMaterialIssuePreparation>();
 
+// =========================================================================
+// PHASE 4B TYPES — YARN ISSUE + ADDITIONAL ISSUE + YARN RETURN SIMULATION
+// =========================================================================
+
+export type YarnIssueTransactionType = "INITIAL_ISSUE" | "ADDITIONAL_ISSUE";
+
+export interface YarnIssueTransaction {
+  id: string;
+  transactionType: YarnIssueTransactionType;
+  jobCardDraftId: string;
+  productionOrderId: string;
+  loomId: string;
+  materialId: string | null;
+  materialCode: string;
+  materialName: string;
+  lotId: string;
+  lotNo: string;
+  qtyKg: number;
+  plannedQtyKg: number;
+  expectedQtyKg: number;
+  transactionDate: string;
+  remark: string;
+  createdAt: string;
+}
+
+export type YarnReturnReason =
+  | "Unused Material"
+  | "Excess Issue"
+  | "Order Quantity Reduced"
+  | "Job Completed"
+  | "Loom Change"
+  | "Quality Concern"
+  | "Wrong Material"
+  | "Other";
+
+export interface YarnReturnTransaction {
+  id: string;
+  jobCardDraftId: string;
+  productionOrderId: string;
+  originalIssueTransactionIds?: string[];
+  materialId: string | null;
+  materialCode: string;
+  materialName: string;
+  lotId?: string;
+  lotNo?: string;
+  qtyKg: number;
+  returnDate: string;
+  reason: YarnReturnReason;
+  remark: string;
+  createdAt: string;
+}
+
+export type JobCardMaterialLedgerStatus =
+  | "NOT_ISSUED"
+  | "PARTIALLY_ISSUED"
+  | "FULLY_ISSUED"
+  | "OVER_ISSUED"
+  | "RETURN_PENDING"
+  | "SETTLED";
+
+export interface JobCardMaterialLedger {
+  jobCardDraftId: string;
+  productionOrderId: string;
+  loomId: string;
+  loomNo: string;
+  materialId: string | null;
+  materialCode: string;
+  materialName: string;
+  expectedQtyKg: number;
+  plannedQtyKg: number;
+  initialIssuedQtyKg: number;
+  additionalIssuedQtyKg: number;
+  totalIssuedQtyKg: number;
+  returnedQtyKg: number;
+  netIssuedQtyKg: number;
+  remainingRequirementKg: number;
+  excessWithProductionKg: number;
+  status: JobCardMaterialLedgerStatus;
+  transactions: (
+    | (YarnIssueTransaction & { kind: "ISSUE" })
+    | (YarnReturnTransaction & { kind: "RETURN" })
+  )[];
+  recommendedAction?: string;
+}
+
+export interface JobCardExecutionSummary {
+  jobCardDraftId: string;
+  productionOrderId: string;
+  loomNo: string;
+  totalExpectedWeftKg: number;
+  totalNetIssuedWeftKg: number;
+  totalRemainingWeftKg: number;
+  totalExcessWeftKg: number;
+  ledgers: JobCardMaterialLedger[];
+  warpContext: JobCardMaterialIssuePreparation["warpContext"];
+  overallStatus: "NOT_ISSUED" | "PARTIALLY_ISSUED" | "FULLY_ISSUED" | "RETURN_PENDING" | "SETTLED";
+}
+
+// In-Memory Execution Simulation Stores (Phase 4B - Frontend only)
+const inMemoryYarnIssueTransactions = new Map<string, YarnIssueTransaction[]>();
+const inMemoryYarnReturnTransactions = new Map<string, YarnReturnTransaction[]>();
+
+// =========================================================================
+// PHASE 4B PURE HELPER FUNCTIONS (Step 35, 36)
+// =========================================================================
+
+export function sumInitialIssues(transactions: YarnIssueTransaction[]): number {
+  return roundQty(sumQty(transactions.filter((t) => t.transactionType === "INITIAL_ISSUE").map((t) => t.qtyKg)));
+}
+
+export function sumAdditionalIssues(transactions: YarnIssueTransaction[]): number {
+  return roundQty(sumQty(transactions.filter((t) => t.transactionType === "ADDITIONAL_ISSUE").map((t) => t.qtyKg)));
+}
+
+export function sumReturns(returns: YarnReturnTransaction[]): number {
+  return roundQty(sumQty(returns.map((r) => r.qtyKg)));
+}
+
+export function calculateNetIssued(totalIssued: number, returned: number): number {
+  return roundQty(Math.max(0, totalIssued - returned));
+}
+
+export function calculateIssueRemaining(expected: number, netIssued: number): number {
+  return roundQty(Math.max(0, expected - netIssued));
+}
+
+export function calculateIssueExcess(expected: number, netIssued: number): number {
+  return roundQty(Math.max(0, netIssued - expected));
+}
+
+export function validateReturnLimit(returnQty: number, netIssued: number): { valid: boolean; error?: string } {
+  if (returnQty <= 0) {
+    return { valid: false, error: "Return quantity must be greater than zero." };
+  }
+  if (returnQty > netIssued) {
+    return {
+      valid: false,
+      error: `Return quantity (${returnQty.toFixed(3)} KG) exceeds net issued quantity (${netIssued.toFixed(3)} KG).`,
+    };
+  }
+  return { valid: true };
+}
+
 /**
- * Service Layer for SCKT Production Planning Phase 1, 2, 3, 3B & 4A.
- * Connects Sales Order -> Production Order -> Cost Sheet -> Material Requirement -> FIFO Allocation -> Revision Delta -> Warp/Beam & Weft Job-Card Planning -> Release Readiness & Execution Preparation.
+ * Service Layer for SCKT Production Planning Phase 1, 2, 3, 3B, 4A & 4B.
+ * Connects Sales Order -> Production Order -> Cost Sheet -> Material Requirement -> FIFO Allocation -> Revision Delta -> Warp/Beam & Weft Job-Card Planning -> Release Readiness & Execution Preparation -> Yarn Issue & Return Execution Simulation.
  * Strictly read-only on inventory tables; no real reservations or stock deductions.
  */
 export const ProductionPlanningService = {
@@ -3731,6 +3874,608 @@ export const ProductionPlanningService = {
   },
 
   // =========================================================================
+  // PHASE 4B — WEFT YARN ISSUE + ADDITIONAL ISSUE + YARN RETURN SIMULATION
+  // =========================================================================
+
+  /**
+   * Validates issue quantity against lot limits, production allocation limit, and over-issue policy.
+   * Step 9, 13, 25, 26, 30.
+   */
+  validateIssueQty(params: {
+    jobCardDraftId: string;
+    materialCode: string;
+    lotId: string;
+    issueQty: number;
+    transactionType: YarnIssueTransactionType;
+    order: ProductionOrder;
+    draft: JobCardDraft;
+  }): { valid: boolean; error?: string; remainingLotPlannedKg?: number } {
+    const { jobCardDraftId, materialCode, lotId, issueQty, order, draft } = params;
+
+    if (issueQty <= 0) {
+      return { valid: false, error: "Issue quantity must be greater than zero." };
+    }
+
+    // Material readiness check
+    const cs = order.cost_sheet_id ? this.getCostSheet(order.cost_sheet_id) : null;
+    const reqs = cs
+      ? this.calculateMaterialRequirements({
+          costSheet: cs,
+          productionQty: order.qty_metre,
+          productionUnit: order.unit || "MTR",
+        })
+      : [];
+
+    const req = reqs.find(
+      (r) => r.materialCode === materialCode || (r.materialId && r.materialId === lotId)
+    );
+    if (req) {
+      if (req.readiness === "UNMAPPED") {
+        return {
+          valid: false,
+          error: "Issue simulation blocked: Material requirement is UNMAPPED to yarn inventory.",
+        };
+      }
+      if (req.readiness === "CALCULATION_PENDING") {
+        return {
+          valid: false,
+          error: "Issue simulation blocked: Material calculation basis is pending in Cost Sheet.",
+        };
+      }
+    }
+
+    // Retrieve preparation
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+    const line = prep.weftIssuePlan.lines.find((l) => l.materialCode === materialCode);
+    if (!line) {
+      return {
+        valid: false,
+        error: `Weft material ${materialCode} not found in Job Card preparation.`,
+      };
+    }
+
+    // Step 13 & 42 / Test D: Over-issue policy check
+    const ledger = this.getJobCardMaterialLedger(jobCardDraftId, materialCode, order);
+    const potentialNet = roundQty(ledger.netIssuedQtyKg + issueQty);
+    if (potentialNet > ledger.expectedQtyKg) {
+      const excess = roundQty(potentialNet - ledger.expectedQtyKg);
+      return {
+        valid: false,
+        error: `Over-issue blocked by ${excess.toFixed(3)} KG: Whole cone/package over-issue tolerance is not configured. (Expected: ${ledger.expectedQtyKg.toFixed(3)} KG, Potential Net: ${potentialNet.toFixed(3)} KG).`,
+      };
+    }
+
+    // Step 25 & 47 / Test I: Production allocation limit check
+    const orderAllocations = this.getAllocationPlansForOrder(order.id);
+    const prodAlloc = orderAllocations.find(
+      (a) =>
+        a.materialCode === materialCode ||
+        a.materialRequirementId === line.materialId ||
+        (line.materialId && a.materialId === line.materialId)
+    );
+    const prodAllocatedKg = prodAlloc ? prodAlloc.totalPlannedQty : line.productionAllocatedKg;
+
+    // Check issues across all drafts of this production order
+    let totalIssuedAcrossAllDrafts = 0;
+    for (const [, txs] of inMemoryYarnIssueTransactions.entries()) {
+      const draftIssues = txs.filter(
+        (t) =>
+          t.productionOrderId === order.id &&
+          (t.materialCode === materialCode || (line.materialId && t.materialId === line.materialId))
+      );
+      totalIssuedAcrossAllDrafts = roundQty(totalIssuedAcrossAllDrafts + sumQty(draftIssues.map((t) => t.qtyKg)));
+    }
+
+    // Check if other job cards planned issues in preparations
+    const allDrafts = this.getJobCardDraftsForOrder(order.id);
+    let otherJobCardsPlannedKg = 0;
+    for (const d of allDrafts) {
+      if (d.id !== jobCardDraftId) {
+        const otherPrep = inMemoryIssuePreparations.get(d.id);
+        const otherLine = otherPrep?.weftIssuePlan.lines.find(
+          (l) => l.materialCode === materialCode || (line.materialId && l.materialId === line.materialId)
+        );
+        if (otherLine) {
+          otherJobCardsPlannedKg = roundQty(otherJobCardsPlannedKg + otherLine.plannedIssueQtyKg);
+        }
+      }
+    }
+
+    const availableFromProdAlloc = Math.max(0, roundQty(prodAllocatedKg - otherJobCardsPlannedKg));
+    if (issueQty > availableFromProdAlloc) {
+      const excess = roundQty(issueQty - availableFromProdAlloc);
+      return {
+        valid: false,
+        error: `Production allocation exceeded by ${excess.toFixed(3)} KG. (Max available for this Job Card: ${availableFromProdAlloc.toFixed(3)} KG, Attempted: ${issueQty.toFixed(3)} KG).`,
+      };
+    }
+
+    // Step 9 & 50 / Test L: Lot quantity limit check
+    const lotPlan = line.allocatedLots.find(
+      (l) => l.lotId === lotId || l.lotNo === lotId
+    );
+    if (lotPlan) {
+      const existingIssuesForLot = (inMemoryYarnIssueTransactions.get(jobCardDraftId) || []).filter(
+        (t) =>
+          (t.materialCode === materialCode || t.materialId === line.materialId) &&
+          (t.lotId === lotId || t.lotNo === lotId)
+      );
+      const alreadyIssuedFromLot = sumQty(existingIssuesForLot.map((t) => t.qtyKg));
+      const remainingLotPlannedKg = roundQty(Math.max(0, lotPlan.allocatedQtyKg - alreadyIssuedFromLot));
+      if (issueQty > remainingLotPlannedKg) {
+        return {
+          valid: false,
+          error: `Issue quantity (${issueQty.toFixed(3)} KG) exceeds planned lot limit (${remainingLotPlannedKg.toFixed(3)} KG for lot ${lotPlan.lotNo}).`,
+          remainingLotPlannedKg,
+        };
+      }
+    }
+
+    return { valid: true };
+  },
+
+  /**
+   * Creates an Initial Yarn Issue Simulation transaction (Step 7, 8, 9, 10).
+   * Inherits all business context without re-entry.
+   */
+  createInitialYarnIssueSimulation(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    materialCode: string;
+    lotId: string;
+    lotNo: string;
+    qtyKg: number;
+    transactionDate?: string;
+    remark?: string;
+  }): { success: boolean; transaction?: YarnIssueTransaction; error?: string } {
+    const { draft, order, materialCode, lotId, lotNo, qtyKg, transactionDate, remark } = params;
+
+    const validation = this.validateIssueQty({
+      jobCardDraftId: draft.id,
+      materialCode,
+      lotId,
+      issueQty: qtyKg,
+      transactionType: "INITIAL_ISSUE",
+      order,
+      draft,
+    });
+
+    if (!validation.valid) {
+      return { success: false, error: validation.error || "Issue validation failed." };
+    }
+
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+    const line = prep.weftIssuePlan.lines.find((l) => l.materialCode === materialCode);
+
+    const transaction: YarnIssueTransaction = {
+      id: `iss-init-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      transactionType: "INITIAL_ISSUE",
+      jobCardDraftId: draft.id,
+      productionOrderId: order.id,
+      loomId: draft.loomId,
+      materialId: line?.materialId || null,
+      materialCode,
+      materialName: line?.materialName || materialCode,
+      lotId,
+      lotNo,
+      qtyKg: roundQty(qtyKg),
+      plannedQtyKg: line?.plannedIssueQtyKg || roundQty(qtyKg),
+      expectedQtyKg: line?.expectedQtyKg || roundQty(qtyKg),
+      transactionDate: transactionDate || new Date().toISOString().split("T")[0] || "",
+      remark: remark || "Initial Yarn Issue Simulation",
+      createdAt: new Date().toISOString(),
+    };
+
+    const existing = inMemoryYarnIssueTransactions.get(draft.id) || [];
+    inMemoryYarnIssueTransactions.set(draft.id, [...existing, transaction]);
+
+    return { success: true, transaction };
+  },
+
+  /**
+   * Creates an Additional Yarn Issue Simulation transaction (Step 12, 13).
+   * Blocks over-issue exceeding expected requirement.
+   */
+  createAdditionalYarnIssueSimulation(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    materialCode: string;
+    lotId: string;
+    lotNo: string;
+    qtyKg: number;
+    transactionDate?: string;
+    remark?: string;
+  }): { success: boolean; transaction?: YarnIssueTransaction; error?: string } {
+    const { draft, order, materialCode, lotId, lotNo, qtyKg, transactionDate, remark } = params;
+
+    const validation = this.validateIssueQty({
+      jobCardDraftId: draft.id,
+      materialCode,
+      lotId,
+      issueQty: qtyKg,
+      transactionType: "ADDITIONAL_ISSUE",
+      order,
+      draft,
+    });
+
+    if (!validation.valid) {
+      return { success: false, error: validation.error || "Additional issue validation failed." };
+    }
+
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+    const line = prep.weftIssuePlan.lines.find((l) => l.materialCode === materialCode);
+
+    const transaction: YarnIssueTransaction = {
+      id: `iss-add-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      transactionType: "ADDITIONAL_ISSUE",
+      jobCardDraftId: draft.id,
+      productionOrderId: order.id,
+      loomId: draft.loomId,
+      materialId: line?.materialId || null,
+      materialCode,
+      materialName: line?.materialName || materialCode,
+      lotId,
+      lotNo,
+      qtyKg: roundQty(qtyKg),
+      plannedQtyKg: line?.plannedIssueQtyKg || roundQty(qtyKg),
+      expectedQtyKg: line?.expectedQtyKg || roundQty(qtyKg),
+      transactionDate: transactionDate || new Date().toISOString().split("T")[0] || "",
+      remark: remark || "Additional Yarn Issue Simulation",
+      createdAt: new Date().toISOString(),
+    };
+
+    const existing = inMemoryYarnIssueTransactions.get(draft.id) || [];
+    inMemoryYarnIssueTransactions.set(draft.id, [...existing, transaction]);
+
+    return { success: true, transaction };
+  },
+
+  /**
+   * Validates return quantity against Net Issued quantity (Step 16).
+   * Return Qty must satisfy: > 0 and Return Qty <= Net Issued Qty.
+   */
+  validateReturnQty(
+    draftId: string,
+    materialCode: string,
+    returnQty: number,
+    order: ProductionOrder
+  ): { valid: boolean; error?: string; maxReturnableKg?: number } {
+    const ledger = this.getJobCardMaterialLedger(draftId, materialCode, order);
+    const maxReturnableKg = ledger.netIssuedQtyKg;
+
+    if (returnQty <= 0) {
+      return { valid: false, error: "Return quantity must be greater than zero.", maxReturnableKg };
+    }
+    if (returnQty > maxReturnableKg) {
+      return {
+        valid: false,
+        error: `Return quantity (${returnQty.toFixed(3)} KG) exceeds net issued quantity (${maxReturnableKg.toFixed(3)} KG).`,
+        maxReturnableKg,
+      };
+    }
+
+    return { valid: true, maxReturnableKg };
+  },
+
+  /**
+   * Creates a Yarn Return Simulation transaction (Step 15, 16, 17, 18).
+   * Starts from existing issued material; never rewrites historical issues.
+   */
+  createYarnReturnSimulation(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    materialCode: string;
+    qtyKg: number;
+    lotId?: string;
+    lotNo?: string;
+    reason: YarnReturnReason;
+    remark?: string;
+    returnDate?: string;
+  }): { success: boolean; transaction?: YarnReturnTransaction; error?: string } {
+    const { draft, order, materialCode, qtyKg, lotId, lotNo, reason, remark, returnDate } = params;
+
+    const validation = this.validateReturnQty(draft.id, materialCode, qtyKg, order);
+    if (!validation.valid) {
+      return { success: false, error: validation.error || "Return validation failed." };
+    }
+
+    if (reason === "Other" && (!remark || remark.trim() === "")) {
+      return { success: false, error: "Remark is required when return reason is 'Other'." };
+    }
+
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+    const line = prep.weftIssuePlan.lines.find((l) => l.materialCode === materialCode);
+
+    const transaction: YarnReturnTransaction = {
+      id: `ret-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      jobCardDraftId: draft.id,
+      productionOrderId: order.id,
+      materialId: line?.materialId || null,
+      materialCode,
+      materialName: line?.materialName || materialCode,
+      lotId: lotId || "UNSPECIFIED",
+      lotNo: lotNo || (lotId ? lotId : "UNSPECIFIED / TO VALIDATE"),
+      qtyKg: roundQty(qtyKg),
+      returnDate: returnDate || new Date().toISOString().split("T")[0] || "",
+      reason,
+      remark: remark || `Returned due to: ${reason}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    const existing = inMemoryYarnReturnTransactions.get(draft.id) || [];
+    inMemoryYarnReturnTransactions.set(draft.id, [...existing, transaction]);
+
+    return { success: true, transaction };
+  },
+
+  /**
+   * Computes Job Card Material Ledger for a specific Weft material (Step 5, 6, 23, 24).
+   * Total Issued = Initial + Additional
+   * Net Issued = Total Issued - Returned
+   * Remaining Requirement = max(Expected - Net Issued, 0)
+   * Excess With Production = max(Net Issued - Expected, 0)
+   */
+  getJobCardMaterialLedger(
+    draftId: string,
+    materialCode: string,
+    order: ProductionOrder
+  ): JobCardMaterialLedger {
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    const draft = drafts.find((d) => d.id === draftId) || {
+      id: draftId,
+      draftCardNo: `DRAFT-${draftId}`,
+      loomPlanId: `lp-${draftId}`,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      salesOrderNo: order.sales_order_no || "SO-DIRECT",
+      customerName: order.party_name || "—",
+      itemCode: order.order_no,
+      designNo: order.design_no || "Standard",
+      quality: order.quality || "—",
+      loomId: "lm-default",
+      loomNo: "LOOM-01",
+      loomType: "Jacquard",
+      pannaInch: 54,
+      plannedQtyMetre: order.qty_metre,
+      unit: "MTR",
+      priority: order.priority || "normal",
+      deliveryDate: order.delivery_date || "—",
+      costSheetNo: "CS-NONE",
+      warpReadiness: "WARP READY",
+      weftReadiness: "WEFT READY",
+      status: "DRAFT" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+    const line = prep.weftIssuePlan.lines.find((l) => l.materialCode === materialCode);
+
+    const expectedQtyKg = line?.expectedQtyKg || 0;
+    const plannedQtyKg = line?.plannedIssueQtyKg || 0;
+
+    const allIssues = (inMemoryYarnIssueTransactions.get(draftId) || []).filter(
+      (t) => t.materialCode === materialCode || (line?.materialId && t.materialId === line.materialId)
+    );
+    const allReturns = (inMemoryYarnReturnTransactions.get(draftId) || []).filter(
+      (r) => r.materialCode === materialCode || (line?.materialId && r.materialId === line.materialId)
+    );
+
+    const initialIssuedQtyKg = sumInitialIssues(allIssues);
+    const additionalIssuedQtyKg = sumAdditionalIssues(allIssues);
+    const totalIssuedQtyKg = roundQty(initialIssuedQtyKg + additionalIssuedQtyKg);
+    const returnedQtyKg = sumReturns(allReturns);
+    const netIssuedQtyKg = calculateNetIssued(totalIssuedQtyKg, returnedQtyKg);
+    const remainingRequirementKg = calculateIssueRemaining(expectedQtyKg, netIssuedQtyKg);
+    const excessWithProductionKg = calculateIssueExcess(expectedQtyKg, netIssuedQtyKg);
+
+    let status: JobCardMaterialLedgerStatus = "NOT_ISSUED";
+    let recommendedAction: string | undefined;
+
+    if (totalIssuedQtyKg === 0 && returnedQtyKg === 0) {
+      status = "NOT_ISSUED";
+    } else if (excessWithProductionKg > 0) {
+      status = "RETURN_PENDING";
+      recommendedAction = `RETURN ${excessWithProductionKg.toFixed(3)} KG (Excess with production)`;
+    } else if (remainingRequirementKg > 0) {
+      status = "PARTIALLY_ISSUED";
+      recommendedAction = `ADDITIONAL ISSUE REQUIRED: ${remainingRequirementKg.toFixed(3)} KG`;
+    } else if (netIssuedQtyKg >= expectedQtyKg && returnedQtyKg === 0) {
+      status = "FULLY_ISSUED";
+    } else {
+      status = "SETTLED";
+    }
+
+    const mergedTransactions = [
+      ...allIssues.map((i) => ({ ...i, kind: "ISSUE" as const })),
+      ...allReturns.map((r) => ({ ...r, kind: "RETURN" as const })),
+    ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    return {
+      jobCardDraftId: draft.id,
+      productionOrderId: order.id,
+      loomId: draft.loomId,
+      loomNo: draft.loomNo,
+      materialId: line?.materialId || null,
+      materialCode,
+      materialName: line?.materialName || materialCode,
+      expectedQtyKg,
+      plannedQtyKg,
+      initialIssuedQtyKg,
+      additionalIssuedQtyKg,
+      totalIssuedQtyKg,
+      returnedQtyKg,
+      netIssuedQtyKg,
+      remainingRequirementKg,
+      excessWithProductionKg,
+      status,
+      transactions: mergedTransactions,
+      ...(recommendedAction ? { recommendedAction } : {}),
+    };
+  },
+
+  /**
+   * Returns all material ledgers for a Job Card Draft.
+   */
+  getJobCardMaterialLedgers(draft: JobCardDraft, order: ProductionOrder): JobCardMaterialLedger[] {
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+    return prep.weftIssuePlan.lines.map((l) =>
+      this.getJobCardMaterialLedger(draft.id, l.materialCode, order)
+    );
+  },
+
+  /**
+   * Recalculates Job Card Material Ledgers after Production/Sales Order revision (Step 19, 20, 21).
+   * Historical transactions are strictly preserved.
+   */
+  recalculateMaterialLedgerAfterRevision(
+    draftId: string,
+    order: ProductionOrder,
+    revisedDraftQtyMetre?: number
+  ): JobCardMaterialLedger[] {
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    let draft = drafts.find((d) => d.id === draftId);
+    if (!draft) {
+      draft = {
+        id: draftId,
+        draftCardNo: `DRAFT-${draftId}`,
+        loomPlanId: `lp-${draftId}`,
+        productionOrderId: order.id,
+        productionOrderNo: order.order_no,
+        salesOrderNo: order.sales_order_no || "SO-DIRECT",
+        customerName: order.party_name || "—",
+        itemCode: order.order_no,
+        designNo: order.design_no || "Standard",
+        quality: order.quality || "—",
+        loomId: "lm-default",
+        loomNo: "LOOM-01",
+        loomType: "Jacquard",
+        pannaInch: 54,
+        plannedQtyMetre: revisedDraftQtyMetre !== undefined ? revisedDraftQtyMetre : order.qty_metre,
+        unit: order.unit || "MTR",
+        priority: order.priority || "normal",
+        deliveryDate: order.delivery_date || "—",
+        costSheetNo: "CS-NONE",
+        warpReadiness: "WARP READY",
+        weftReadiness: "WEFT READY",
+        status: "DRAFT" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.saveJobCardDraft(draft);
+    } else if (revisedDraftQtyMetre !== undefined) {
+      draft = { ...draft, plannedQtyMetre: revisedDraftQtyMetre };
+      this.saveJobCardDraft(draft);
+    } else if (drafts.length === 1 && draft.plannedQtyMetre !== order.qty_metre) {
+      draft = { ...draft, plannedQtyMetre: order.qty_metre };
+      this.saveJobCardDraft(draft);
+    }
+    return this.getJobCardMaterialLedgers(draft, order);
+  },
+
+  /**
+   * Provides complete execution simulation summary for a Job Card Draft (Step 5, 23, 31).
+   */
+  getJobCardExecutionSummary(draft: JobCardDraft, order: ProductionOrder): JobCardExecutionSummary {
+    const ledgers = this.getJobCardMaterialLedgers(draft, order);
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+
+    const totalExpectedWeftKg = sumQty(ledgers.map((l) => l.expectedQtyKg));
+    const totalNetIssuedWeftKg = sumQty(ledgers.map((l) => l.netIssuedQtyKg));
+    const totalRemainingWeftKg = sumQty(ledgers.map((l) => l.remainingRequirementKg));
+    const totalExcessWeftKg = sumQty(ledgers.map((l) => l.excessWithProductionKg));
+
+    let overallStatus: JobCardExecutionSummary["overallStatus"] = "NOT_ISSUED";
+    if (totalExcessWeftKg > 0) {
+      overallStatus = "RETURN_PENDING";
+    } else if (totalNetIssuedWeftKg === 0) {
+      overallStatus = "NOT_ISSUED";
+    } else if (totalRemainingWeftKg > 0) {
+      overallStatus = "PARTIALLY_ISSUED";
+    } else if (totalRemainingWeftKg === 0) {
+      overallStatus = "FULLY_ISSUED";
+    } else {
+      overallStatus = "SETTLED";
+    }
+
+    return {
+      jobCardDraftId: draft.id,
+      productionOrderId: order.id,
+      loomNo: draft.loomNo,
+      totalExpectedWeftKg,
+      totalNetIssuedWeftKg,
+      totalRemainingWeftKg,
+      totalExcessWeftKg,
+      ledgers,
+      warpContext: prep.warpContext,
+      overallStatus,
+    };
+  },
+
+  /**
+   * Simulates bulk Initial Issue from all prepared Weft lines and lots (Step 27, 28).
+   */
+  simulateBulkInitialIssue(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    remark?: string;
+  }): { success: boolean; createdCount: number; errors: string[] } {
+    const { draft, order, remark } = params;
+    const prep = this.getJobCardMaterialIssuePreparation(draft, order);
+    let createdCount = 0;
+    const errors: string[] = [];
+
+    for (const line of prep.weftIssuePlan.lines) {
+      if (line.allocatedLots.length > 0) {
+        for (const lot of line.allocatedLots) {
+          if (lot.allocatedQtyKg > 0) {
+            const res = this.createInitialYarnIssueSimulation({
+              draft,
+              order,
+              materialCode: line.materialCode,
+              lotId: lot.lotId,
+              lotNo: lot.lotNo,
+              qtyKg: lot.allocatedQtyKg,
+              remark: remark || "Bulk Initial Issue Simulation",
+            });
+            if (res.success) {
+              createdCount++;
+            } else if (res.error) {
+              errors.push(res.error);
+            }
+          }
+        }
+      } else if (line.plannedIssueQtyKg > 0) {
+        // Fallback for lines without detailed lot breakdown
+        const res = this.createInitialYarnIssueSimulation({
+          draft,
+          order,
+          materialCode: line.materialCode,
+          lotId: `lot-${line.materialCode}`,
+          lotNo: `LOT-${line.materialCode}`,
+          qtyKg: line.plannedIssueQtyKg,
+          remark: remark || "Bulk Initial Issue Simulation",
+        });
+        if (res.success) {
+          createdCount++;
+        } else if (res.error) {
+          errors.push(res.error);
+        }
+      }
+    }
+
+    return { success: errors.length === 0, createdCount, errors };
+  },
+
+  /**
+   * Clears in-memory issue and return transactions for a draft (for test isolation/cleanup).
+   */
+  clearJobCardMaterialTransactions(jobCardDraftId: string): void {
+    inMemoryYarnIssueTransactions.delete(jobCardDraftId);
+    inMemoryYarnReturnTransactions.delete(jobCardDraftId);
+  },
+
+  // =========================================================================
   // AUTOMATED TEST SUITE FOR PHASE 4A (Test Cases A through L)
   // =========================================================================
 
@@ -4229,6 +4974,490 @@ export const ProductionPlanningService = {
     inMemoryLoomPlans.delete("po-test-4h");
     inMemoryLoomPlans.delete("po-test-4i");
     inMemoryLoomPlans.delete("po-test-4l");
+
+    return results;
+  },
+
+  // =========================================================================
+  // AUTOMATED TEST SUITE FOR PHASE 4B (Test Cases A through L)
+  // =========================================================================
+
+  runPhase4BVerificationTests(): Record<string, { pass: boolean; details: string }> {
+    const results: Record<string, { pass: boolean; details: string }> = {};
+
+    const mockOrder: ProductionOrder = {
+      id: "po-test-4b-runner",
+      order_no: "PO-4B-TEST",
+      production_type: "CUSTOMER ORDER",
+      cost_sheet_id: "cs-test-ready-4a",
+      design_no: "D-015",
+      party_name: "Labdhi Sarees",
+      quality: "Kota Pashmina",
+      qty_metre: 2000,
+      delivery_date: "2026-10-15",
+      priority: "high",
+      status: "planned",
+      remarks: "",
+      created_at: new Date().toISOString(),
+    };
+
+    const mockPlan: LoomProductionPlan = {
+      id: "lp-4b-runner",
+      productionOrderId: "po-test-4b-runner",
+      productionOrderNo: "PO-4B-TEST",
+      loomId: "lm-test-4b",
+      loomNo: "LOOM-4B",
+      loomType: "Jacquard",
+      pannaInch: 54,
+      plannedQty: 2000,
+      producedQty: 0,
+      remainingPlannedQty: 2000,
+      beamNo: "BM-102",
+      beamType: "Kota Black Warp",
+      warpReadiness: "WARP READY",
+      weftReadiness: "WEFT READY",
+      planningStatus: "READY",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const draft = this.getJobCardDraftFromLoomPlan(mockPlan, mockOrder);
+    this.saveJobCardDraft(draft);
+
+    // Baseline allocation plan for 88.572 KG weft across two 50 KG lots
+    const baseAlloc: MaterialAllocationPlan = {
+      id: "alloc-4b-base",
+      productionOrderId: "po-test-4b-runner",
+      productionOrderNo: "PO-4B-TEST",
+      materialRequirementId: "line-weft-ready-1",
+      materialId: "mat-30-kota-black-beam",
+      materialCode: "Y-23",
+      materialName: "30 KOTA BLACK BEAM",
+      sourceType: "WEFT",
+      sourceCostSheetId: "cs-test-ready-4a",
+      sourceCostSheetNo: "CS-4A-READY",
+      sourceLineLabel: "WEFT 1",
+      requiredQty: 88.572,
+      totalAvailableQty: 100,
+      totalPlannedQty: 88.572,
+      remainingQty: 0,
+      shortageQty: 0,
+      allocationStatus: "FULLY_ALLOCATED",
+      isManualOverride: false,
+      isStale: false,
+      plannedAt: new Date().toISOString(),
+      availabilityCheckedAt: new Date().toISOString(),
+      lines: [
+        {
+          lotId: "lot-4b-1",
+          lotNo: "LOT-4B-1",
+          locationBin: "RACK-1",
+          receivedDate: "2026-09-01",
+          supplierName: "Test Supplier",
+          totalStockKg: 50,
+          reservedKg: 0,
+          availableKg: 50,
+          fifoRank: 1,
+          suggestedQty: 44.286,
+          plannedQty: 44.286,
+          isManualOverride: false,
+        },
+        {
+          lotId: "lot-4b-2",
+          lotNo: "LOT-4B-2",
+          locationBin: "RACK-2",
+          receivedDate: "2026-09-02",
+          supplierName: "Test Supplier",
+          totalStockKg: 50,
+          reservedKg: 0,
+          availableKg: 50,
+          fifoRank: 2,
+          suggestedQty: 44.286,
+          plannedQty: 44.286,
+          isManualOverride: false,
+        },
+      ],
+    };
+
+    // Test Case A — Full Initial Issue
+    // Expected: 88.572. Initial Issue: 44.286 + 44.286 = 88.572. Returned: 0.
+    // Net: 88.572. Remaining: 0. Status: FULLY_ISSUED.
+    this.clearJobCardMaterialTransactions(draft.id);
+    this.saveAllocationPlan(baseAlloc);
+
+    this.createInitialYarnIssueSimulation({
+      draft,
+      order: mockOrder,
+      materialCode: "Y-23",
+      lotId: "lot-4b-1",
+      lotNo: "LOT-4B-1",
+      qtyKg: 44.286,
+    });
+    this.createInitialYarnIssueSimulation({
+      draft,
+      order: mockOrder,
+      materialCode: "Y-23",
+      lotId: "lot-4b-2",
+      lotNo: "LOT-4B-2",
+      qtyKg: 44.286,
+    });
+
+    const ledgerA = this.getJobCardMaterialLedger(draft.id, "Y-23", mockOrder);
+    const isTestAPass =
+      ledgerA.totalIssuedQtyKg === 88.572 &&
+      ledgerA.netIssuedQtyKg === 88.572 &&
+      ledgerA.remainingRequirementKg === 0 &&
+      ledgerA.status === "FULLY_ISSUED";
+
+    results["Test A (Full Initial Issue -> FULLY_ISSUED)"] = {
+      pass: isTestAPass,
+      details: isTestAPass
+        ? `Issued 88.572 KG across 2 lots. Net: ${ledgerA.netIssuedQtyKg} KG, Remaining: ${ledgerA.remainingRequirementKg} KG, Status: ${ledgerA.status}`
+        : "Failed: Full initial issue calculation incorrect",
+    };
+
+    // Test Case B — Partial Issue
+    // Expected: 88.572. Initial Issue: 44.286.
+    // Net: 44.286. Remaining: 44.286. Status: PARTIALLY_ISSUED.
+    this.clearJobCardMaterialTransactions(draft.id);
+    this.createInitialYarnIssueSimulation({
+      draft,
+      order: mockOrder,
+      materialCode: "Y-23",
+      lotId: "lot-4b-1",
+      lotNo: "LOT-4B-1",
+      qtyKg: 44.286,
+    });
+
+    const ledgerB = this.getJobCardMaterialLedger(draft.id, "Y-23", mockOrder);
+    const isTestBPass =
+      ledgerB.totalIssuedQtyKg === 44.286 &&
+      ledgerB.netIssuedQtyKg === 44.286 &&
+      ledgerB.remainingRequirementKg === 44.286 &&
+      ledgerB.status === "PARTIALLY_ISSUED";
+
+    results["Test B (Partial Initial Issue -> PARTIALLY_ISSUED)"] = {
+      pass: isTestBPass,
+      details: isTestBPass
+        ? `Issued 44.286 KG. Net: ${ledgerB.netIssuedQtyKg} KG, Remaining: ${ledgerB.remainingRequirementKg} KG, Status: ${ledgerB.status}`
+        : "Failed: Partial issue calculation incorrect",
+    };
+
+    // Test Case C — Additional Issue
+    // Expected: 88.572. Initial: 44.286. Additional: 44.286.
+    // Total: 88.572. Net: 88.572. Remaining: 0. Status: FULLY_ISSUED.
+    this.createAdditionalYarnIssueSimulation({
+      draft,
+      order: mockOrder,
+      materialCode: "Y-23",
+      lotId: "lot-4b-2",
+      lotNo: "LOT-4B-2",
+      qtyKg: 44.286,
+    });
+
+    const ledgerC = this.getJobCardMaterialLedger(draft.id, "Y-23", mockOrder);
+    const isTestCPass =
+      ledgerC.initialIssuedQtyKg === 44.286 &&
+      ledgerC.additionalIssuedQtyKg === 44.286 &&
+      ledgerC.totalIssuedQtyKg === 88.572 &&
+      ledgerC.netIssuedQtyKg === 88.572 &&
+      ledgerC.remainingRequirementKg === 0 &&
+      ledgerC.status === "FULLY_ISSUED";
+
+    results["Test C (Additional Issue Completes Requirement)"] = {
+      pass: isTestCPass,
+      details: isTestCPass
+        ? `Initial: ${ledgerC.initialIssuedQtyKg} KG, Additional: ${ledgerC.additionalIssuedQtyKg} KG, Net: ${ledgerC.netIssuedQtyKg} KG, Remaining: ${ledgerC.remainingRequirementKg} KG.`
+        : "Failed: Additional issue calculation incorrect",
+    };
+
+    // Test Case D — Over-Issue Blocked
+    // Expected: 88.572. Already Net Issued: 88.572.
+    // Attempt additional: 5 KG (would make Net 93.572 KG).
+    // Expected: Reject with over-issue tolerance unconfigured message.
+    const overIssueAttempt = this.createAdditionalYarnIssueSimulation({
+      draft,
+      order: mockOrder,
+      materialCode: "Y-23",
+      lotId: "lot-4b-2",
+      lotNo: "LOT-4B-2",
+      qtyKg: 5,
+    });
+
+    const isTestDPass =
+      !overIssueAttempt.success &&
+      !!overIssueAttempt.error &&
+      overIssueAttempt.error.includes("Over-issue blocked") &&
+      overIssueAttempt.error.includes("Whole cone/package over-issue tolerance is not configured");
+
+    results["Test D (Over-Issue Blocked Without Tolerance)"] = {
+      pass: isTestDPass,
+      details: isTestDPass
+        ? `Correctly blocked: "${overIssueAttempt.error}"`
+        : "Failed: Over-issue was improperly allowed",
+    };
+
+    // Test Case E — Yarn Return
+    // Total Issued: 88.572. Return: 10.000 KG.
+    // Net: 78.572. Remaining Requirement: 10.000 KG.
+    const returnResE = this.createYarnReturnSimulation({
+      draft,
+      order: mockOrder,
+      materialCode: "Y-23",
+      qtyKg: 10,
+      lotId: "lot-4b-1",
+      lotNo: "LOT-4B-1",
+      reason: "Excess Issue",
+    });
+
+    const ledgerE = this.getJobCardMaterialLedger(draft.id, "Y-23", mockOrder);
+    const isTestEPass =
+      returnResE.success &&
+      ledgerE.totalIssuedQtyKg === 88.572 &&
+      ledgerE.returnedQtyKg === 10 &&
+      ledgerE.netIssuedQtyKg === 78.572 &&
+      ledgerE.remainingRequirementKg === 10;
+
+    results["Test E (Yarn Return Updates Net Issued)"] = {
+      pass: isTestEPass,
+      details: isTestEPass
+        ? `Returned 10 KG. Total Issued: ${ledgerE.totalIssuedQtyKg} KG, Returned: ${ledgerE.returnedQtyKg} KG, Net: ${ledgerE.netIssuedQtyKg} KG, Remaining: ${ledgerE.remainingRequirementKg} KG.`
+        : "Failed: Yarn return calculation incorrect",
+    };
+
+    // Test Case F — Return Above Net Rejected
+    // Net Issued: 78.572. Attempt Return: 80.000 KG.
+    // Expected: Reject because return quantity exceeds net issued.
+    const invalidReturnF = this.createYarnReturnSimulation({
+      draft,
+      order: mockOrder,
+      materialCode: "Y-23",
+      qtyKg: 80,
+      lotId: "lot-4b-1",
+      lotNo: "LOT-4B-1",
+      reason: "Unused Material",
+    });
+
+    const isTestFPass =
+      !invalidReturnF.success &&
+      !!invalidReturnF.error &&
+      invalidReturnF.error.includes("exceeds net issued quantity");
+
+    results["Test F (Return Above Net Issued Rejected)"] = {
+      pass: isTestFPass,
+      details: isTestFPass
+        ? `Correctly rejected: "${invalidReturnF.error}"`
+        : "Failed: Allowed return exceeding net issued",
+    };
+
+    // Test Case G — Requirement Increase
+    // Order revised 2,000 -> 2,500 MTR.
+    // Expected increases from 88.572 to 110.715 KG.
+    // Net Issued remains: 78.572 KG.
+    // Additional Required: 32.143 KG. Historical transactions preserved.
+    const orderG: ProductionOrder = { ...mockOrder, qty_metre: 2500 };
+    const ledgersG = this.recalculateMaterialLedgerAfterRevision(draft.id, orderG, 2500);
+    const ledgerG = ledgersG.find((l) => l.materialCode === "Y-23");
+
+    const isTestGPass =
+      !!ledgerG &&
+      ledgerG.expectedQtyKg === 110.715 &&
+      ledgerG.netIssuedQtyKg === 78.572 &&
+      ledgerG.remainingRequirementKg === 32.143 &&
+      !!ledgerG.recommendedAction &&
+      ledgerG.recommendedAction.includes("ADDITIONAL ISSUE REQUIRED");
+
+    results["Test G (Requirement Increase Delta Traceable)"] = {
+      pass: isTestGPass,
+      details: isTestGPass
+        ? `Revised to 2,500m: Expected=${ledgerG?.expectedQtyKg} KG, Net=${ledgerG?.netIssuedQtyKg} KG, Remaining=${ledgerG?.remainingRequirementKg} KG. Action: ${ledgerG?.recommendedAction}`
+        : "Failed: Requirement increase did not preserve history or calculate delta",
+    };
+
+    // Test Case H — Requirement Decrease
+    // Order revised 2,000 -> 1,000 MTR.
+    // Expected decreases to 44.286 KG.
+    // Net Issued is 78.572 KG.
+    // Excess with production: 34.286 KG. Return recommended. Historical records NOT modified.
+    const orderH: ProductionOrder = { ...mockOrder, qty_metre: 1000 };
+    const ledgersH = this.recalculateMaterialLedgerAfterRevision(draft.id, orderH, 1000);
+    const ledgerH = ledgersH.find((l) => l.materialCode === "Y-23");
+
+    const isTestHPass =
+      !!ledgerH &&
+      ledgerH.expectedQtyKg === 44.286 &&
+      ledgerH.netIssuedQtyKg === 78.572 &&
+      ledgerH.excessWithProductionKg === 34.286 &&
+      ledgerH.status === "RETURN_PENDING" &&
+      !!ledgerH.recommendedAction &&
+      ledgerH.recommendedAction.includes("RETURN");
+
+    results["Test H (Requirement Decrease Flags Excess Return)"] = {
+      pass: isTestHPass,
+      details: isTestHPass
+        ? `Revised to 1,000m: Expected=${ledgerH?.expectedQtyKg} KG, Net=${ledgerH?.netIssuedQtyKg} KG, Excess=${ledgerH?.excessWithProductionKg} KG, Status=${ledgerH?.status}. Action: ${ledgerH?.recommendedAction}`
+        : "Failed: Requirement decrease did not flag excess return correctly",
+    };
+
+    // Test Case I — Production Allocation Limit Enforcement
+    // Production allocation: 100 KG. Other Job Cards: 90 KG.
+    // Current Job Card attempts: 20 KG. Only 10 KG available from production allocation.
+    const draftI1: JobCardDraft = { ...draft, id: "jc-draft-i1", draftCardNo: "DRAFT-JC-I1" };
+    const draftI2: JobCardDraft = { ...draft, id: "jc-draft-i2", draftCardNo: "DRAFT-JC-I2" };
+    inMemoryJobCardDrafts.set("po-test-4b-i", [draftI1, draftI2]);
+
+    const orderI: ProductionOrder = { ...mockOrder, id: "po-test-4b-i" };
+    const allocI: MaterialAllocationPlan = {
+      ...baseAlloc,
+      id: "alloc-i",
+      productionOrderId: "po-test-4b-i",
+      totalPlannedQty: 100, // Max 100 KG
+      lines: [
+        { ...baseAlloc.lines[0]!, lotId: "lot-i", lotNo: "LOT-I", totalStockKg: 100, availableKg: 100, plannedQty: 100 },
+      ],
+    };
+    this.saveAllocationPlan(allocI);
+
+    // Mock other Job Card issue preparation using 90 KG
+    const prepI2: JobCardMaterialIssuePreparation = {
+      id: "prep-i2",
+      draftJobCardId: "jc-draft-i2",
+      draftJobCardNo: "DRAFT-JC-I2",
+      productionOrderId: "po-test-4b-i",
+      loomId: "lm-test-i2",
+      loomNo: "LOOM-I2",
+      plannedQtyMetre: 1000,
+      warpContext: { totalEnds: 4800, plannedLengthMetre: 1000, warpComposition: [], beamReadiness: "WARP READY" },
+      weftIssuePlan: {
+        lines: [
+          {
+            materialId: "mat-30-kota-black-beam",
+            materialCode: "Y-23",
+            materialName: "30 KOTA BLACK BEAM",
+            expectedQtyKg: 90,
+            productionAllocatedKg: 100,
+            otherJobCardsPlannedKg: 0,
+            availableForThisJobCardKg: 100,
+            plannedIssueQtyKg: 90, // Already planned 90 KG!
+            remainingRequirementKg: 0,
+            allocatedLots: [],
+            status: "READY",
+          },
+        ],
+        totalExpectedKg: 90,
+        totalPlannedIssueKg: 90,
+        totalRemainingRequirementKg: 0,
+        hasOverAllocation: false,
+        hasShortage: false,
+        manualOverrideCount: 0,
+      },
+      issuePlanStatus: "MATERIAL ISSUE PLAN READY",
+      createdAt: new Date().toISOString(),
+    };
+    this.saveMaterialIssuePreparation(prepI2);
+
+    // Now draft I1 attempts to issue 20 KG when only 10 KG remains of production allocation
+    const issueResI = this.createInitialYarnIssueSimulation({
+      draft: draftI1,
+      order: orderI,
+      materialCode: "Y-23",
+      lotId: "lot-i",
+      lotNo: "LOT-I",
+      qtyKg: 20,
+    });
+
+    const isTestIPass =
+      !issueResI.success &&
+      !!issueResI.error &&
+      issueResI.error.includes("Production allocation exceeded by 10.000 KG");
+
+    results["Test I (Production Allocation Limit Enforced)"] = {
+      pass: isTestIPass,
+      details: isTestIPass
+        ? `Correctly blocked: "${issueResI.error}"`
+        : "Failed: Production allocation limit not enforced",
+    };
+
+    // Test Case J — Unmapped Material Blocked
+    const orderJ: ProductionOrder = { ...mockOrder, id: "po-test-4b-j", cost_sheet_id: "cs-unmapped-test" };
+    const draftJ: JobCardDraft = { ...draft, id: "jc-draft-j", productionOrderId: "po-test-4b-j" };
+    const issueResJ = this.createInitialYarnIssueSimulation({
+      draft: draftJ,
+      order: orderJ,
+      materialCode: "UNMAPPED-WEFT",
+      lotId: "lot-j",
+      lotNo: "LOT-J",
+      qtyKg: 10,
+    });
+
+    const isTestJPass =
+      !issueResJ.success &&
+      !!issueResJ.error &&
+      issueResJ.error.includes("UNMAPPED");
+
+    results["Test J (Unmapped Material Issue Blocked)"] = {
+      pass: isTestJPass,
+      details: isTestJPass
+        ? `Correctly blocked: "${issueResJ.error}"`
+        : "Failed: Unmapped material issue allowed",
+    };
+
+    // Test Case K — Calculation Pending Blocked
+    const orderK: ProductionOrder = { ...mockOrder, id: "po-test-4b-k", cost_sheet_id: "cs-calc-pending-test" };
+    const draftK: JobCardDraft = { ...draft, id: "jc-draft-k", productionOrderId: "po-test-4b-k" };
+    const issueResK = this.createInitialYarnIssueSimulation({
+      draft: draftK,
+      order: orderK,
+      materialCode: "Y-23",
+      lotId: "lot-k",
+      lotNo: "LOT-K",
+      qtyKg: 10,
+    });
+
+    const isTestKPass =
+      !issueResK.success &&
+      !!issueResK.error &&
+      issueResK.error.includes("calculation basis is pending");
+
+    results["Test K (Calculation Pending Issue Blocked)"] = {
+      pass: isTestKPass,
+      details: isTestKPass
+        ? `Correctly blocked: "${issueResK.error}"`
+        : "Failed: Calculation pending issue allowed",
+    };
+
+    // Test Case L — Lot Limit Enforced
+    // Lot 4B-1 planned: 44.286 KG. Attempt issue: 50.000 KG.
+    this.clearJobCardMaterialTransactions(draft.id);
+    this.saveJobCardDraft({ ...draft, plannedQtyMetre: 2000 });
+    const overLotAttemptL = this.createInitialYarnIssueSimulation({
+      draft: { ...draft, plannedQtyMetre: 2000 },
+      order: mockOrder,
+      materialCode: "Y-23",
+      lotId: "lot-4b-1",
+      lotNo: "LOT-4B-1",
+      qtyKg: 50,
+    });
+
+    const isTestLPass =
+      !overLotAttemptL.success &&
+      !!overLotAttemptL.error &&
+      overLotAttemptL.error.includes("exceeds planned lot limit");
+
+    results["Test L (Lot Quantity Limit Enforced)"] = {
+      pass: isTestLPass,
+      details: isTestLPass
+        ? `Correctly blocked: "${overLotAttemptL.error}"`
+        : "Failed: Lot quantity limit not enforced",
+    };
+
+    // Clean up test data
+    this.clearJobCardMaterialTransactions(draft.id);
+    this.clearJobCardMaterialTransactions("jc-draft-i1");
+    this.clearJobCardMaterialTransactions("jc-draft-i2");
+    this.clearJobCardMaterialTransactions("jc-draft-j");
+    this.clearJobCardMaterialTransactions("jc-draft-k");
+    inMemoryJobCardDrafts.delete("po-test-4b-i");
 
     return results;
   },

@@ -37,6 +37,7 @@ interface MaterialIssuePrepDialogProps {
   draft: JobCardDraft | null;
   order: ProductionOrder | null;
   onSaved?: (prep: JobCardMaterialIssuePreparation) => void;
+  onOpenLedger?: (draft: JobCardDraft) => void;
 }
 
 export const MaterialIssuePrepDialog: React.FC<MaterialIssuePrepDialogProps> = ({
@@ -45,6 +46,7 @@ export const MaterialIssuePrepDialog: React.FC<MaterialIssuePrepDialogProps> = (
   draft,
   order,
   onSaved,
+  onOpenLedger,
 }) => {
   if (!draft || !order) return null;
 
@@ -132,6 +134,34 @@ export const MaterialIssuePrepDialog: React.FC<MaterialIssuePrepDialogProps> = (
 
     onSaved?.(prep);
     onOpenChange(false);
+  };
+
+  const handleSimulateIssue = () => {
+    if (prep.issuePlanStatus === "BLOCKED") {
+      toast.error("Issue Simulation Blocked", {
+        description: "Cannot simulate issue with allocation or requirement limit violations.",
+      });
+      return;
+    }
+
+    ProductionPlanningService.saveMaterialIssuePreparation(prep);
+    const result = ProductionPlanningService.simulateBulkInitialIssue({
+      draft,
+      order,
+      remark: "Initial Issue Simulation from Preparation",
+    });
+
+    if (result.success) {
+      toast.success("Initial Issue Simulated", {
+        description: `Created initial issue simulation for ${result.createdCount} material line(s). Inventory untouched.`,
+      });
+      onOpenChange(false);
+      onOpenLedger?.(draft);
+    } else {
+      toast.error("Simulation Encountered Blockers", {
+        description: result.errors.join("; "),
+      });
+    }
   };
 
   return (
@@ -366,19 +396,31 @@ export const MaterialIssuePrepDialog: React.FC<MaterialIssuePrepDialogProps> = (
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between w-full pt-2">
+        <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 w-full pt-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Close
           </Button>
 
-          <Button
-            size="sm"
-            onClick={handleSavePreparation}
-            disabled={prep.issuePlanStatus === "BLOCKED"}
-            className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5 font-bold"
-          >
-            <BookmarkCheck className="size-4" /> Save Material Issue Plan
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSavePreparation}
+              disabled={prep.issuePlanStatus === "BLOCKED"}
+              className="border-purple-500/40 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 gap-1.5 font-bold"
+            >
+              <BookmarkCheck className="size-4" /> Save Material Plan
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={handleSimulateIssue}
+              disabled={prep.issuePlanStatus === "BLOCKED"}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 font-bold shadow-xs"
+            >
+              <ArrowRight className="size-4" /> Simulate Initial Issue
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -69,6 +69,7 @@ import { WhyBlockedDialog } from "@/components/why-blocked-dialog";
 import { ProductionReleasePreviewDialog } from "@/components/production-release-preview-dialog";
 import { JobCardDraftDialog } from "@/components/job-card-draft-dialog";
 import { MaterialIssuePrepDialog } from "@/components/material-issue-prep-dialog";
+import { JobCardMaterialLedgerDialog } from "@/components/job-card-material-ledger-dialog";
 import type { ProductionOrder } from "@/lib/production-store";
 import type { SalesOrderItem } from "@/lib/sales-store";
 import type { CostSheetFull } from "@/lib/cost-sheet-store";
@@ -173,7 +174,11 @@ export function ProductionPlanningWorkspace({
   const [selectedDraftForMaterialPrep, setSelectedDraftForMaterialPrep] = useState<JobCardDraft | null>(null);
   const [isMaterialIssuePrepOpen, setIsMaterialIssuePrepOpen] = useState(false);
 
-  // Automated Test Suite Viewer states (Phase 1, 2, 3, 3B & 4A)
+  // Phase 4B Material Ledger Execution Simulation states
+  const [selectedDraftForLedger, setSelectedDraftForLedger] = useState<JobCardDraft | null>(null);
+  const [isMaterialLedgerOpen, setIsMaterialLedgerOpen] = useState(false);
+
+  // Automated Test Suite Viewer states (Phase 1, 2, 3, 3B, 4A & 4B)
   const [showTestModal, setShowTestModal] = useState(false);
   const [testResults, setTestResults] = useState<{
     phase1: Record<string, { pass: boolean; details: string }>;
@@ -181,6 +186,7 @@ export function ProductionPlanningWorkspace({
     phase3: Record<string, { pass: boolean; details: string }>;
     phase3b: Record<string, { pass: boolean; details: string }>;
     phase4a?: Record<string, { pass: boolean; details: string }> | undefined;
+    phase4b?: Record<string, { pass: boolean; details: string }> | undefined;
   } | null>(null);
 
   // 1. Resolve Linked Sales Order
@@ -342,14 +348,15 @@ export function ProductionPlanningWorkspace({
     setIsAllocationDialogOpen(true);
   };
 
-  // Run Test Suite Runner (Phase 1, Phase 2, Phase 3, Phase 3B & Phase 4A)
+  // Run Test Suite Runner (Phase 1, Phase 2, Phase 3, Phase 3B, Phase 4A & Phase 4B)
   const handleRunTests = () => {
     const p1 = ProductionPlanningService.runVerificationTests();
     const p2 = ProductionPlanningService.runPhase2VerificationTests();
     const p3 = ProductionPlanningService.runPhase3VerificationTests();
     const p3b = ProductionPlanningService.runPhase3BVerificationTests();
     const p4a = ProductionPlanningService.runPhase4AVerificationTests();
-    setTestResults({ phase1: p1, phase2: p2, phase3: p3, phase3b: p3b, phase4a: p4a });
+    const p4b = ProductionPlanningService.runPhase4BVerificationTests();
+    setTestResults({ phase1: p1, phase2: p2, phase3: p3, phase3b: p3b, phase4a: p4a, phase4b: p4b });
     setShowTestModal(true);
   };
 
@@ -1526,6 +1533,25 @@ export function ProductionPlanningWorkspace({
                                 >
                                   <PackageCheck className="size-3" /> Issues
                                 </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    if (targetPlan) {
+                                      const draft = ProductionPlanningService.getJobCardDraftFromLoomPlan(
+                                        targetPlan,
+                                        order
+                                      );
+                                      setSelectedDraftForLedger(draft);
+                                      setIsMaterialLedgerOpen(true);
+                                    }
+                                  }}
+                                  className="h-6 text-[0.625rem] px-2 border-emerald-400 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-medium"
+                                  title="Job Card Material Ledger (Phase 4B)"
+                                >
+                                  <Layers className="size-3" /> Ledger
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -1635,6 +1661,24 @@ export function ProductionPlanningWorkspace({
                             className="h-6 text-[0.625rem] text-purple-700 font-medium"
                           >
                             <PackageCheck className="size-3" /> Issues
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (targetPlan) {
+                                const draft = ProductionPlanningService.getJobCardDraftFromLoomPlan(
+                                  targetPlan,
+                                  order
+                                );
+                                setSelectedDraftForLedger(draft);
+                                setIsMaterialLedgerOpen(true);
+                              }
+                            }}
+                            className="h-6 text-[0.625rem] text-emerald-700 font-medium"
+                          >
+                            <Layers className="size-3" /> Ledger
                           </Button>
                         </div>
                       </div>
@@ -1855,7 +1899,22 @@ export function ProductionPlanningWorkspace({
         onOpenChange={setIsMaterialIssuePrepOpen}
         draft={selectedDraftForMaterialPrep}
         order={order}
+        onOpenLedger={(draft) => {
+          setSelectedDraftForLedger(draft);
+          setIsMaterialLedgerOpen(true);
+        }}
         onSaved={() => {
+          setRefreshKey((k) => k + 1);
+          onRefresh?.();
+        }}
+      />
+
+      <JobCardMaterialLedgerDialog
+        open={isMaterialLedgerOpen}
+        onOpenChange={setIsMaterialLedgerOpen}
+        draft={selectedDraftForLedger}
+        order={order}
+        onUpdated={() => {
           setRefreshKey((k) => k + 1);
           onRefresh?.();
         }}
@@ -2162,6 +2221,7 @@ function TestSuiteResultsDialog({
     phase3?: Record<string, { pass: boolean; details: string }> | undefined;
     phase3b?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4a?: Record<string, { pass: boolean; details: string }> | undefined;
+    phase4b?: Record<string, { pass: boolean; details: string }> | undefined;
   };
 }) {
   const p1Entries = Object.entries(results.phase1);
@@ -2169,13 +2229,15 @@ function TestSuiteResultsDialog({
   const p3Entries = results.phase3 ? Object.entries(results.phase3) : [];
   const p3bEntries = results.phase3b ? Object.entries(results.phase3b) : [];
   const p4aEntries = results.phase4a ? Object.entries(results.phase4a) : [];
+  const p4bEntries = results.phase4b ? Object.entries(results.phase4b) : [];
 
   const allPassed =
     p1Entries.every(([, v]) => v.pass) &&
     p2Entries.every(([, v]) => v.pass) &&
     p3Entries.every(([, v]) => v.pass) &&
     p3bEntries.every(([, v]) => v.pass) &&
-    p4aEntries.every(([, v]) => v.pass);
+    p4aEntries.every(([, v]) => v.pass) &&
+    p4bEntries.every(([, v]) => v.pass);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -2184,7 +2246,7 @@ function TestSuiteResultsDialog({
           <div className="flex items-center justify-between">
             <DialogTitle className="text-sm font-bold flex items-center gap-2">
               <FlaskConical className="size-4 text-primary" />
-              Automated Test Verification Suite (Phases 1, 2, 3, 3B & 4A)
+              Automated Test Verification Suite (Phases 1, 2, 3, 3B, 4A & 4B)
             </DialogTitle>
             <Badge
               className={`font-bold ${
@@ -2317,6 +2379,35 @@ function TestSuiteResultsDialog({
               </h4>
               <div className="space-y-1.5 font-mono text-[0.6875rem]">
                 {p4aEntries.map(([name, r]) => (
+                  <div
+                    key={name}
+                    className={`p-2 rounded border flex items-start justify-between gap-2 ${
+                      r.pass
+                        ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300"
+                        : "border-rose-500/30 bg-rose-500/5 text-rose-800 dark:text-rose-300"
+                    }`}
+                  >
+                    <div>
+                      <strong className="block text-foreground">{name}</strong>
+                      <span className="text-muted-foreground">{r.details}</span>
+                    </div>
+                    <Badge variant={r.pass ? "default" : "destructive"} className="text-[0.5625rem]">
+                      {r.pass ? "PASS" : "FAIL"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Phase 4B Tests */}
+          {p4bEntries.length > 0 && (
+            <div>
+              <h4 className="font-bold text-muted-foreground uppercase text-[0.6875rem] tracking-wider mb-2">
+                Phase 4B Weft Yarn Issue, Additional Issue & Return Simulation Tests (Test Cases A through L)
+              </h4>
+              <div className="space-y-1.5 font-mono text-[0.6875rem]">
+                {p4bEntries.map(([name, r]) => (
                   <div
                     key={name}
                     className={`p-2 rounded border flex items-start justify-between gap-2 ${

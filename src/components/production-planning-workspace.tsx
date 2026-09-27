@@ -25,6 +25,8 @@ import {
   FileCheck2,
   AlertOctagon,
   PackageCheck,
+  Gauge,
+  ListPlus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,6 +72,8 @@ import { ProductionReleasePreviewDialog } from "@/components/production-release-
 import { JobCardDraftDialog } from "@/components/job-card-draft-dialog";
 import { MaterialIssuePrepDialog } from "@/components/material-issue-prep-dialog";
 import { JobCardMaterialLedgerDialog } from "@/components/job-card-material-ledger-dialog";
+import { DailyProductionDialog } from "@/components/daily-production-dialog";
+import { BulkDailyProductionDialog } from "@/components/bulk-daily-production-dialog";
 import type { ProductionOrder } from "@/lib/production-store";
 import type { SalesOrderItem } from "@/lib/sales-store";
 import type { CostSheetFull } from "@/lib/cost-sheet-store";
@@ -178,7 +182,12 @@ export function ProductionPlanningWorkspace({
   const [selectedDraftForLedger, setSelectedDraftForLedger] = useState<JobCardDraft | null>(null);
   const [isMaterialLedgerOpen, setIsMaterialLedgerOpen] = useState(false);
 
-  // Automated Test Suite Viewer states (Phase 1, 2, 3, 3B, 4A & 4B)
+  // Phase 4C Daily Production & Progress states
+  const [selectedDraftForDailyProduction, setSelectedDraftForDailyProduction] = useState<JobCardDraft | null>(null);
+  const [isDailyProductionOpen, setIsDailyProductionOpen] = useState(false);
+  const [isBulkProductionOpen, setIsBulkProductionOpen] = useState(false);
+
+  // Automated Test Suite Viewer states (Phase 1, 2, 3, 3B, 4A, 4B & 4C)
   const [showTestModal, setShowTestModal] = useState(false);
   const [testResults, setTestResults] = useState<{
     phase1: Record<string, { pass: boolean; details: string }>;
@@ -187,6 +196,7 @@ export function ProductionPlanningWorkspace({
     phase3b: Record<string, { pass: boolean; details: string }>;
     phase4a?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4b?: Record<string, { pass: boolean; details: string }> | undefined;
+    phase4c?: Record<string, { pass: boolean; details: string }> | undefined;
   } | null>(null);
 
   // 1. Resolve Linked Sales Order
@@ -294,6 +304,13 @@ export function ProductionPlanningWorkspace({
     return ProductionPlanningService.evaluateProductionReadiness(order);
   }, [order, loomPlans, refreshKey]);
 
+  // Phase 4C Production Order Progress
+  const orderProgress = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    refreshKey;
+    return ProductionPlanningService.getProductionOrderProgress(order);
+  }, [order, refreshKey]);
+
   // Split into Warp and Weft lines
   const warpRequirements = materialRequirements.filter((r) => r.sourceType === "WARP");
   const weftRequirements = materialRequirements.filter((r) => r.sourceType === "WEFT");
@@ -348,7 +365,7 @@ export function ProductionPlanningWorkspace({
     setIsAllocationDialogOpen(true);
   };
 
-  // Run Test Suite Runner (Phase 1, Phase 2, Phase 3, Phase 3B, Phase 4A & Phase 4B)
+  // Run Test Suite Runner (Phase 1, Phase 2, Phase 3, Phase 3B, Phase 4A, Phase 4B & Phase 4C)
   const handleRunTests = () => {
     const p1 = ProductionPlanningService.runVerificationTests();
     const p2 = ProductionPlanningService.runPhase2VerificationTests();
@@ -356,7 +373,8 @@ export function ProductionPlanningWorkspace({
     const p3b = ProductionPlanningService.runPhase3BVerificationTests();
     const p4a = ProductionPlanningService.runPhase4AVerificationTests();
     const p4b = ProductionPlanningService.runPhase4BVerificationTests();
-    setTestResults({ phase1: p1, phase2: p2, phase3: p3, phase3b: p3b, phase4a: p4a, phase4b: p4b });
+    const p4c = ProductionPlanningService.runPhase4CVerificationTests();
+    setTestResults({ phase1: p1, phase2: p2, phase3: p3, phase3b: p3b, phase4a: p4a, phase4b: p4b, phase4c: p4c });
     setShowTestModal(true);
   };
 
@@ -576,6 +594,20 @@ export function ProductionPlanningWorkspace({
               <span className="text-muted-foreground text-[0.6875rem]">Production Qty:</span>
               <span className="font-mono font-bold text-foreground">
                 {order.qty_metre.toLocaleString()} {order.unit || "MTR"}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-baseline border-b border-border/50 pb-1.5">
+              <span className="text-muted-foreground text-[0.6875rem]">Produced To Date:</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                {orderProgress.producedToDateMetre.toLocaleString()} {order.unit || "MTR"}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-baseline border-b border-border/50 pb-1.5">
+              <span className="text-muted-foreground text-[0.6875rem]">Remaining Qty:</span>
+              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                {orderProgress.remainingQtyMetre.toLocaleString()} {order.unit || "MTR"} ({orderProgress.progressPercent}%)
               </span>
             </div>
 
@@ -1243,6 +1275,15 @@ export function ProductionPlanningWorkspace({
               </div>
 
               <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsBulkProductionOpen(true)}
+                  className="h-6 text-[0.625rem] px-2 border-primary/40 text-primary hover:bg-primary/5 font-semibold gap-1"
+                  title="Quick / Bulk Daily Production Entry across active Job Cards"
+                >
+                  <ListPlus className="size-3" /> Quick Bulk Entry
+                </Button>
                 <span className="text-[0.6875rem] text-muted-foreground font-normal hidden sm:inline">
                   Order Release Status:
                 </span>
@@ -1374,6 +1415,7 @@ export function ProductionPlanningWorkspace({
                       <TableRow className="bg-muted/60 text-muted-foreground font-semibold">
                         <TableHead className="h-8">Loom</TableHead>
                         <TableHead className="h-8 text-right">Planned Qty</TableHead>
+                        <TableHead className="h-8 text-right">Produced / Rem</TableHead>
                         <TableHead className="h-8">Beam Link</TableHead>
                         <TableHead className="h-8">Warp</TableHead>
                         <TableHead className="h-8">Weft</TableHead>
@@ -1394,6 +1436,21 @@ export function ProductionPlanningWorkspace({
                             </TableCell>
                             <TableCell className="py-2 text-right font-mono font-bold text-primary">
                               {ev.plannedQtyMetre.toLocaleString()} {order.unit || "MTR"}
+                            </TableCell>
+                            <TableCell className="py-2 text-right font-mono">
+                              {(() => {
+                                const lp = ProductionPlanningService.getLoomProductionProgress(ev.loomPlanId, order);
+                                return (
+                                  <div>
+                                    <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
+                                      {lp.producedToDateMetre.toLocaleString()} MTR
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {lp.remainingQtyMetre.toLocaleString()} rem ({lp.progressPercent}%)
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell className="py-2 font-mono text-blue-600 font-semibold">
                               {ev.beamNo || ev.beamType || "—"}
@@ -1552,6 +1609,25 @@ export function ProductionPlanningWorkspace({
                                 >
                                   <Layers className="size-3" /> Ledger
                                 </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    if (targetPlan) {
+                                      const draft = ProductionPlanningService.getJobCardDraftFromLoomPlan(
+                                        targetPlan,
+                                        order
+                                      );
+                                      setSelectedDraftForDailyProduction(draft);
+                                      setIsDailyProductionOpen(true);
+                                    }
+                                  }}
+                                  className="h-6 text-[0.625rem] px-2 border-blue-400 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20 font-medium"
+                                  title="Log Daily Production & Track Progress (Phase 4C)"
+                                >
+                                  <Gauge className="size-3" /> Daily Prod
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -1679,6 +1755,24 @@ export function ProductionPlanningWorkspace({
                             className="h-6 text-[0.625rem] text-emerald-700 font-medium"
                           >
                             <Layers className="size-3" /> Ledger
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (targetPlan) {
+                                const draft = ProductionPlanningService.getJobCardDraftFromLoomPlan(
+                                  targetPlan,
+                                  order
+                                );
+                                setSelectedDraftForDailyProduction(draft);
+                                setIsDailyProductionOpen(true);
+                              }
+                            }}
+                            className="h-6 text-[0.625rem] text-blue-700 font-medium"
+                          >
+                            <Gauge className="size-3" /> Daily Prod
                           </Button>
                         </div>
                       </div>
@@ -1915,6 +2009,34 @@ export function ProductionPlanningWorkspace({
         draft={selectedDraftForLedger}
         order={order}
         onUpdated={() => {
+          setRefreshKey((k) => k + 1);
+          onRefresh?.();
+        }}
+      />
+
+      {/* Phase 4C Daily Production & Progress Dialogs */}
+      <DailyProductionDialog
+        open={isDailyProductionOpen}
+        onOpenChange={setIsDailyProductionOpen}
+        draft={selectedDraftForDailyProduction}
+        order={order}
+        onOpenIssuePrep={() => {
+          if (selectedDraftForDailyProduction) {
+            setSelectedDraftForLedger(selectedDraftForDailyProduction);
+            setIsMaterialLedgerOpen(true);
+          }
+        }}
+        onUpdated={() => {
+          setRefreshKey((k) => k + 1);
+          onRefresh?.();
+        }}
+      />
+
+      <BulkDailyProductionDialog
+        open={isBulkProductionOpen}
+        onOpenChange={setIsBulkProductionOpen}
+        order={order}
+        onSaved={() => {
           setRefreshKey((k) => k + 1);
           onRefresh?.();
         }}
@@ -2222,6 +2344,7 @@ function TestSuiteResultsDialog({
     phase3b?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4a?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4b?: Record<string, { pass: boolean; details: string }> | undefined;
+    phase4c?: Record<string, { pass: boolean; details: string }> | undefined;
   };
 }) {
   const p1Entries = Object.entries(results.phase1);
@@ -2230,6 +2353,7 @@ function TestSuiteResultsDialog({
   const p3bEntries = results.phase3b ? Object.entries(results.phase3b) : [];
   const p4aEntries = results.phase4a ? Object.entries(results.phase4a) : [];
   const p4bEntries = results.phase4b ? Object.entries(results.phase4b) : [];
+  const p4cEntries = results.phase4c ? Object.entries(results.phase4c) : [];
 
   const allPassed =
     p1Entries.every(([, v]) => v.pass) &&
@@ -2237,7 +2361,8 @@ function TestSuiteResultsDialog({
     p3Entries.every(([, v]) => v.pass) &&
     p3bEntries.every(([, v]) => v.pass) &&
     p4aEntries.every(([, v]) => v.pass) &&
-    p4bEntries.every(([, v]) => v.pass);
+    p4bEntries.every(([, v]) => v.pass) &&
+    p4cEntries.every(([, v]) => v.pass);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -2408,6 +2533,35 @@ function TestSuiteResultsDialog({
               </h4>
               <div className="space-y-1.5 font-mono text-[0.6875rem]">
                 {p4bEntries.map(([name, r]) => (
+                  <div
+                    key={name}
+                    className={`p-2 rounded border flex items-start justify-between gap-2 ${
+                      r.pass
+                        ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300"
+                        : "border-rose-500/30 bg-rose-500/5 text-rose-800 dark:text-rose-300"
+                    }`}
+                  >
+                    <div>
+                      <strong className="block text-foreground">{name}</strong>
+                      <span className="text-muted-foreground">{r.details}</span>
+                    </div>
+                    <Badge variant={r.pass ? "default" : "destructive"} className="text-[0.5625rem]">
+                      {r.pass ? "PASS" : "FAIL"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Phase 4C Tests */}
+          {p4cEntries.length > 0 && (
+            <div>
+              <h4 className="font-bold text-muted-foreground uppercase text-[0.6875rem] tracking-wider mb-2">
+                Phase 4C Daily Production, Job Card Progress & Expected Material Position Tests (Test Cases A through M)
+              </h4>
+              <div className="space-y-1.5 font-mono text-[0.6875rem]">
+                {p4cEntries.map(([name, r]) => (
                   <div
                     key={name}
                     className={`p-2 rounded border flex items-start justify-between gap-2 ${

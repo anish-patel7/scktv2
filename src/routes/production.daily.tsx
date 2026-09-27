@@ -86,13 +86,32 @@ function Page() {
   const create = () => {
     if (!form.job_card_id) { toast.error("Select a job card"); return; }
     const card = data.jobCards.find((c) => c.id === form.job_card_id);
+    const metre = Number(form.metre_produced) || 0;
+    if (metre <= 0) { toast.error("Enter a valid metre quantity (> 0)"); return; }
+
+    // Step 13: Over-production validation against remaining Job Card quantity
+    if (card) {
+      const alreadyProduced = data.daily
+        .filter((d) => d.job_card_id === card.id)
+        .reduce((sum, d) => sum + (Number(d.metre_produced) || 0), 0);
+      const remaining = Math.max(card.qty_metre - alreadyProduced, 0);
+      if (metre > remaining) {
+        toast.error(
+          `Production tolerance is not configured. Over-production by ${(metre - remaining).toFixed(
+            3
+          )} MTR blocked. (Planned: ${card.qty_metre} MTR, Attempted Total: ${alreadyProduced + metre} MTR).`
+        );
+        return;
+      }
+    }
+
     const entry: DailyProduction = {
       id: uid("dp"),
       entry_date: form.entry_date,
       shift: form.shift,
       job_card_id: form.job_card_id,
       loom_id: card?.loom_id ?? null,
-      metre_produced: Number(form.metre_produced) || 0,
+      metre_produced: metre,
       yarn_kg_used: Number(form.yarn_kg_used) || 0,
       downtime_min: Number(form.downtime_min) || 0,
       downtime_reason: form.downtime_reason,
@@ -175,6 +194,31 @@ function Page() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {form.job_card_id && (() => {
+                  const card = data.jobCards.find((c) => c.id === form.job_card_id);
+                  const loom = data.looms.find((l) => l.id === card?.loom_id);
+                  const alreadyProduced = data.daily
+                    .filter((d) => d.job_card_id === card?.id)
+                    .reduce((sum, d) => sum + (Number(d.metre_produced) || 0), 0);
+                  const remaining = Math.max((card?.qty_metre || 0) - alreadyProduced, 0);
+                  return (
+                    <div className="col-span-2 p-2 rounded bg-muted/40 border text-xs grid grid-cols-3 gap-1">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block">Inherited Loom</span>
+                        <span className="font-semibold font-mono text-primary">{loom?.loom_no || "No Loom"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block">Planned Qty</span>
+                        <span className="font-semibold font-mono">{card?.qty_metre || 0} MTR</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block">Remaining Qty</span>
+                        <span className="font-bold font-mono text-amber-600">{remaining} MTR</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="space-y-1">
                   <Label className="section-label text-[0.6875rem]">Metres Produced</Label>
                   <Input

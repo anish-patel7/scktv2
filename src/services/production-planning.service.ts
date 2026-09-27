@@ -779,6 +779,247 @@ export function validateReturnLimit(returnQty: number, netIssued: number): { val
   return { valid: true };
 }
 
+// =========================================================================
+// PHASE 4C DATA CONTRACTS (Frontend Simulation Only)
+// =========================================================================
+
+export type DailyProductionTransactionType = "PRODUCTION" | "CORRECTION";
+
+export type DailyProductionCorrectionReason =
+  | "Entry Error"
+  | "Meter Reading Correction"
+  | "Shift Adjustment"
+  | "Rejected Production Adjustment"
+  | "Duplicate Entry Correction"
+  | "Other";
+
+export interface DailyProductionSimulationEntry {
+  id: string;
+  transactionType: DailyProductionTransactionType;
+
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  productionOrderNo: string;
+  salesOrderNo?: string | undefined;
+  customerName?: string | undefined;
+  itemCode?: string | undefined;
+  designNo?: string | undefined;
+
+  loomId: string;
+  loomNo: string;
+
+  productionDate: string;
+  shift: "A" | "B" | "C";
+
+  qtyMetre: number; // positive for PRODUCTION; positive or negative for CORRECTION
+
+  downtimeMinutes?: number | undefined;
+  downtimeReason?: string | undefined;
+
+  correctionOfId?: string | undefined;
+  correctionReason?: DailyProductionCorrectionReason | undefined;
+
+  remark?: string | undefined;
+  status: "DRAFT" | "SAVED";
+
+  createdAt: string;
+}
+
+export interface MaterialOperationalPosition {
+  materialId: string | null;
+  materialCode: string;
+  materialName: string;
+
+  consumptionPerMetre: number | null;
+  expectedForJobCardKg: number;
+  expectedToDateKg: number; // consumptionPerMetre * producedToDateMetre
+
+  totalIssuedKg: number;
+  returnedKg: number;
+  netIssuedKg: number;
+
+  unsettledKg: number; // max(netIssuedKg - expectedToDateKg, 0) - NOT WASTAGE
+  shortfallKg: number; // max(expectedToDateKg - netIssuedKg, 0)
+
+  status: "SUFFICIENT" | "ISSUE_SHORTFALL" | "UNSETTLED_MATERIAL" | "CALCULATION_PENDING";
+  actionRecommendation?: string | undefined;
+}
+
+export interface JobCardProductionProgress {
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  productionOrderNo: string;
+  loomId: string;
+  loomNo: string;
+
+  plannedQtyMetre: number;
+  producedTodayMetre: number;
+  producedToDateMetre: number;
+  remainingQtyMetre: number;
+  progressPercent: number;
+
+  productionStatus: "NOT_STARTED" | "IN_PROGRESS" | "TARGET_REACHED" | "REVIEW_REQUIRED";
+  reviewReason?: string | undefined;
+
+  materialPositions: MaterialOperationalPosition[];
+  entries: DailyProductionSimulationEntry[];
+
+  materialSettlementStatus: "NOT_APPLICABLE" | "PENDING" | "SETTLED";
+}
+
+export interface OrderProductionProgress {
+  productionOrderId: string;
+  productionOrderNo: string;
+  productionQtyMetre: number;
+  producedToDateMetre: number;
+  remainingQtyMetre: number;
+  progressPercent: number;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "TARGET_REACHED" | "REVIEW_REQUIRED";
+  jobCardSummaries: {
+    jobCardDraftId: string;
+    jobCardNo: string;
+    loomNo: string;
+    plannedQtyMetre: number;
+    producedToDateMetre: number;
+    remainingQtyMetre: number;
+    progressPercent: number;
+    status: JobCardProductionProgress["productionStatus"];
+  }[];
+}
+
+export interface LoomProductionProgress {
+  loomId: string;
+  loomNo: string;
+  productionOrderId: string;
+  plannedQtyMetre: number;
+  producedToDateMetre: number;
+  remainingQtyMetre: number;
+  progressPercent: number;
+}
+
+export interface JobCardCompletionPreview {
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  loomNo: string;
+  plannedQtyMetre: number;
+  producedToDateMetre: number;
+  materialPositions: MaterialOperationalPosition[];
+  materialSettlementStatus: "PENDING";
+  requiresReview: boolean;
+  reviewReason?: string | undefined;
+}
+
+export interface BulkDailyProductionRow {
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  productionOrderNo: string;
+  loomId: string;
+  loomNo: string;
+  itemCode: string;
+  designNo: string;
+  plannedQtyMetre: number;
+  producedToDateMetre: number;
+  remainingQtyMetre: number;
+  todayQtyMetre: number;
+  shift: "A" | "B" | "C";
+  downtimeMinutes?: number | undefined;
+  downtimeReason?: string | undefined;
+  remark?: string | undefined;
+  validationError?: string | undefined;
+  isValid: boolean;
+}
+
+// In-Memory Execution Simulation Store (Phase 4C - Frontend only)
+const inMemoryDailyProductionEntries = new Map<string, DailyProductionSimulationEntry[]>();
+
+// =========================================================================
+// PHASE 4C PURE HELPER FUNCTIONS (Step 46, 47)
+// =========================================================================
+
+export function sumProductionEntries(entries: DailyProductionSimulationEntry[]): number {
+  return roundQty(sumQty(entries.filter((e) => e.transactionType === "PRODUCTION").map((e) => e.qtyMetre)));
+}
+
+export function sumProductionCorrections(entries: DailyProductionSimulationEntry[]): number {
+  return roundQty(sumQty(entries.filter((e) => e.transactionType === "CORRECTION").map((e) => e.qtyMetre)));
+}
+
+export function calculateProducedToDate(entries: DailyProductionSimulationEntry[]): number {
+  const prod = sumProductionEntries(entries);
+  const corr = sumProductionCorrections(entries);
+  return roundQty(Math.max(0, prod + corr));
+}
+
+export function calculateRemainingProduction(plannedQty: number, producedToDate: number): number {
+  return roundQty(Math.max(0, plannedQty - producedToDate));
+}
+
+export function calculateProgressPercent(plannedQty: number, producedToDate: number): number {
+  if (plannedQty <= 0) return 0;
+  const pct = (producedToDate / plannedQty) * 100;
+  return Math.round(Math.min(100, Math.max(0, pct)) * 100) / 100;
+}
+
+export function calculateExpectedUsage(consumptionPerUnit: number, producedQty: number): number {
+  return roundQty(consumptionPerUnit * producedQty);
+}
+
+export function calculateUnsettled(netIssued: number, expectedUsage: number): number {
+  return roundQty(Math.max(0, netIssued - expectedUsage));
+}
+
+export function calculateShortfall(netIssued: number, expectedUsage: number): number {
+  return roundQty(Math.max(0, expectedUsage - netIssued));
+}
+
+export function validateProductionEntry(params: {
+  plannedQty: number;
+  currentProducedToDate: number;
+  entryQty: number;
+  loomId: string;
+  jobCardLoomId: string;
+  isCorrection?: boolean;
+}): { valid: boolean; error?: string } {
+  const { plannedQty, currentProducedToDate, entryQty, loomId, jobCardLoomId, isCorrection } = params;
+
+  if (loomId !== jobCardLoomId) {
+    return {
+      valid: false,
+      error: `Loom mismatch: Entry loom (${loomId}) does not match Job Card loom (${jobCardLoomId}). Loom Replan required.`,
+    };
+  }
+
+  if (!isCorrection && entryQty <= 0) {
+    return {
+      valid: false,
+      error: "Produced quantity must be greater than zero.",
+    };
+  }
+
+  const potentialTotal = roundQty(currentProducedToDate + entryQty);
+  if (potentialTotal < 0) {
+    return {
+      valid: false,
+      error: `Negative production not allowed. Resulting total would be ${potentialTotal.toFixed(3)} MTR.`,
+    };
+  }
+
+  // Step 13: Over-production tolerance check
+  if (potentialTotal > plannedQty) {
+    const excess = roundQty(potentialTotal - plannedQty);
+    return {
+      valid: false,
+      error: `Production tolerance is not configured. Over-production by ${excess.toFixed(3)} MTR blocked. (Planned: ${plannedQty.toFixed(3)} MTR, Attempted Total: ${potentialTotal.toFixed(3)} MTR).`,
+    };
+  }
+
+  return { valid: true };
+}
+
 /**
  * Service Layer for SCKT Production Planning Phase 1, 2, 3, 3B, 4A & 4B.
  * Connects Sales Order -> Production Order -> Cost Sheet -> Material Requirement -> FIFO Allocation -> Revision Delta -> Warp/Beam & Weft Job-Card Planning -> Release Readiness & Execution Preparation -> Yarn Issue & Return Execution Simulation.
@@ -4473,6 +4714,990 @@ export const ProductionPlanningService = {
   clearJobCardMaterialTransactions(jobCardDraftId: string): void {
     inMemoryYarnIssueTransactions.delete(jobCardDraftId);
     inMemoryYarnReturnTransactions.delete(jobCardDraftId);
+  },
+
+  // =========================================================================
+  // PHASE 4C: DAILY PRODUCTION & PROGRESS SIMULATION (Step 4 to 45)
+  // =========================================================================
+
+  /**
+   * Validates Daily Production entry quantity (Step 6, 13).
+   */
+  validateDailyProductionQty(params: {
+    draft: JobCardDraft;
+    entryQty: number;
+    loomId?: string | undefined;
+    isCorrection?: boolean | undefined;
+  }): { valid: boolean; error?: string } {
+    const { draft, entryQty, loomId, isCorrection } = params;
+    const entries = this.getJobCardDailyProductionEntries(draft.id);
+    const currentProducedToDate = calculateProducedToDate(entries);
+
+    return validateProductionEntry({
+      plannedQty: draft.plannedQtyMetre,
+      currentProducedToDate,
+      entryQty,
+      loomId: loomId || draft.loomId,
+      jobCardLoomId: draft.loomId,
+      ...(isCorrection !== undefined ? { isCorrection } : {}),
+    });
+  },
+
+  /**
+   * Records a Daily Production Simulation entry against a Job Card (Step 4, 5, 7, 8).
+   * Inherits PO, SO, Loom, Item, Customer context automatically.
+   */
+  createDailyProductionSimulation(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    productionDate?: string | undefined;
+    shift?: "A" | "B" | "C" | undefined;
+    qtyMetre: number;
+    downtimeMinutes?: number | undefined;
+    downtimeReason?: string | undefined;
+    remark?: string | undefined;
+    status?: "DRAFT" | "SAVED" | undefined;
+  }): { success: boolean; entry?: DailyProductionSimulationEntry; error?: string } {
+    const { draft, order, productionDate, shift, qtyMetre, downtimeMinutes, downtimeReason, remark, status } = params;
+
+    const validation = this.validateDailyProductionQty({
+      draft,
+      entryQty: qtyMetre,
+      loomId: draft.loomId,
+      isCorrection: false,
+    });
+
+    if (!validation.valid) {
+      return { success: false, error: validation.error || "Daily production validation failed." };
+    }
+
+    const entry: DailyProductionSimulationEntry = {
+      id: `dp-sim-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      transactionType: "PRODUCTION",
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      ...(order.sales_order_no ? { salesOrderNo: order.sales_order_no } : {}),
+      customerName: draft.customerName || order.party_name,
+      itemCode: draft.itemCode || order.order_no,
+      designNo: draft.designNo || order.design_no,
+      loomId: draft.loomId,
+      loomNo: draft.loomNo,
+      productionDate: productionDate || new Date().toISOString().split("T")[0] || "",
+      shift: shift || "A",
+      qtyMetre: roundQty(qtyMetre),
+      downtimeMinutes: downtimeMinutes !== undefined ? downtimeMinutes : 0,
+      ...(downtimeReason ? { downtimeReason } : {}),
+      ...(remark ? { remark } : {}),
+      status: status || "SAVED",
+      createdAt: new Date().toISOString(),
+    };
+
+    const existing = inMemoryDailyProductionEntries.get(draft.id) || [];
+    inMemoryDailyProductionEntries.set(draft.id, [...existing, entry]);
+
+    return { success: true, entry };
+  },
+
+  /**
+   * Records a Production Correction entry (Step 9, 10, 11).
+   * Never silently overwrites historical entries. Correction can be positive or negative.
+   */
+  createDailyProductionCorrection(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    originalEntryId: string;
+    correctionQtyMetre: number;
+    reason: DailyProductionCorrectionReason;
+    remark?: string | undefined;
+    productionDate?: string | undefined;
+    shift?: "A" | "B" | "C" | undefined;
+  }): { success: boolean; entry?: DailyProductionSimulationEntry; error?: string } {
+    const { draft, order, originalEntryId, correctionQtyMetre, reason, remark, productionDate, shift } = params;
+
+    if (reason === "Other" && (!remark || remark.trim() === "")) {
+      return { success: false, error: "Remark is required when correction reason is 'Other'." };
+    }
+
+    const validation = this.validateDailyProductionQty({
+      draft,
+      entryQty: correctionQtyMetre,
+      loomId: draft.loomId,
+      isCorrection: true,
+    });
+
+    if (!validation.valid) {
+      return { success: false, error: validation.error || "Correction validation failed." };
+    }
+
+    const entry: DailyProductionSimulationEntry = {
+      id: `dp-corr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      transactionType: "CORRECTION",
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      ...(order.sales_order_no ? { salesOrderNo: order.sales_order_no } : {}),
+      customerName: draft.customerName || order.party_name,
+      itemCode: draft.itemCode || order.order_no,
+      designNo: draft.designNo || order.design_no,
+      loomId: draft.loomId,
+      loomNo: draft.loomNo,
+      productionDate: productionDate || new Date().toISOString().split("T")[0] || "",
+      shift: shift || "A",
+      qtyMetre: roundQty(correctionQtyMetre),
+      correctionOfId: originalEntryId,
+      correctionReason: reason,
+      ...(remark ? { remark } : {}),
+      status: "SAVED",
+      createdAt: new Date().toISOString(),
+    };
+
+    const existing = inMemoryDailyProductionEntries.get(draft.id) || [];
+    inMemoryDailyProductionEntries.set(draft.id, [...existing, entry]);
+
+    return { success: true, entry };
+  },
+
+  /**
+   * Retrieves all Daily Production Simulation entries for a Job Card Draft.
+   */
+  getJobCardDailyProductionEntries(jobCardDraftId: string): DailyProductionSimulationEntry[] {
+    return inMemoryDailyProductionEntries.get(jobCardDraftId) || [];
+  },
+
+  /**
+   * Calculates Expected Material Usage To Date & Material Positions (Step 17 to 24).
+   * Standard Consumption = Cost Sheet consumption per metre * actual produced metres.
+   * Net Issued = Phase 4B Net Issued.
+   * Unsettled = max(Net Issued - Expected, 0).
+   * Shortfall = max(Expected - Net Issued, 0).
+   */
+  calculateMaterialOperationalPositions(
+    draft: JobCardDraft,
+    order: ProductionOrder,
+    producedMetres: number
+  ): MaterialOperationalPosition[] {
+    const cs = order.cost_sheet_id ? this.getCostSheet(order.cost_sheet_id) : null;
+    const reqs = cs
+      ? this.calculateMaterialRequirements({
+          costSheet: cs,
+          productionQty: order.qty_metre,
+          productionUnit: order.unit || "MTR",
+        })
+      : [];
+
+    const weftReqs = reqs.filter((r) => r.sourceType === "WEFT");
+
+    return weftReqs.map((req): MaterialOperationalPosition => {
+      // Step 17: Cost Sheet consumption per metre
+      const consumptionPerMetre =
+        req.readiness === "CALCULATION_PENDING" || req.consumptionQty === null
+          ? null
+          : req.consumptionQty;
+
+      // Expected for full Job Card
+      const ratio = order.qty_metre > 0 ? draft.plannedQtyMetre / order.qty_metre : 1;
+      const expectedForJobCardKg = roundQty((req.requiredQty || 0) * ratio);
+
+      // Expected To Date based on actual produced metres
+      const expectedToDateKg =
+        consumptionPerMetre !== null ? roundQty(consumptionPerMetre * producedMetres) : 0;
+
+      // Phase 4B Material Ledger integration (Step 19)
+      const ledger = this.getJobCardMaterialLedger(draft.id, req.materialCode, order);
+      const totalIssuedKg = ledger.totalIssuedQtyKg;
+      const returnedKg = ledger.returnedQtyKg;
+      const netIssuedKg = ledger.netIssuedQtyKg;
+
+      let status: MaterialOperationalPosition["status"] = "SUFFICIENT";
+      let unsettledKg = 0;
+      let shortfallKg = 0;
+      let actionRecommendation: string | undefined;
+
+      if (req.readiness === "CALCULATION_PENDING" || consumptionPerMetre === null) {
+        status = "CALCULATION_PENDING";
+        actionRecommendation = "Cost Sheet calculation basis pending";
+      } else if (netIssuedKg >= expectedToDateKg) {
+        unsettledKg = roundQty(netIssuedKg - expectedToDateKg);
+        shortfallKg = 0;
+        status = unsettledKg > 0 ? "UNSETTLED_MATERIAL" : "SUFFICIENT";
+        // Step 26: DO NOT suggest return during active job unless excess for entire card
+        if (netIssuedKg > expectedForJobCardKg) {
+          const excessCard = roundQty(netIssuedKg - expectedForJobCardKg);
+          actionRecommendation = `Excess with production: ${excessCard.toFixed(3)} KG`;
+        }
+      } else {
+        shortfallKg = roundQty(expectedToDateKg - netIssuedKg);
+        unsettledKg = 0;
+        status = "ISSUE_SHORTFALL";
+        actionRecommendation = `Prepare Additional Issue: ${shortfallKg.toFixed(3)} KG`;
+      }
+
+      return {
+        materialId: req.materialId,
+        materialCode: req.materialCode,
+        materialName: req.materialName,
+        consumptionPerMetre,
+        expectedForJobCardKg,
+        expectedToDateKg,
+        totalIssuedKg,
+        returnedKg,
+        netIssuedKg,
+        unsettledKg,
+        shortfallKg,
+        status,
+        ...(actionRecommendation ? { actionRecommendation } : {}),
+      };
+    });
+  },
+
+  /**
+   * Computes Job Card Production Progress (Step 12, 39, 40).
+   */
+  getJobCardProductionProgress(
+    draft: JobCardDraft,
+    order: ProductionOrder
+  ): JobCardProductionProgress {
+    const entries = this.getJobCardDailyProductionEntries(draft.id);
+    const today = new Date().toISOString().split("T")[0];
+
+    const todayEntries = entries.filter((e) => e.productionDate === today);
+    const producedTodayMetre = calculateProducedToDate(todayEntries);
+    const producedToDateMetre = calculateProducedToDate(entries);
+    const remainingQtyMetre = calculateRemainingProduction(draft.plannedQtyMetre, producedToDateMetre);
+    const progressPercent = calculateProgressPercent(draft.plannedQtyMetre, producedToDateMetre);
+
+    let productionStatus: JobCardProductionProgress["productionStatus"] = "NOT_STARTED";
+    let reviewReason: string | undefined;
+    let materialSettlementStatus: JobCardProductionProgress["materialSettlementStatus"] = "NOT_APPLICABLE";
+
+    if (producedToDateMetre > draft.plannedQtyMetre) {
+      productionStatus = "REVIEW_REQUIRED";
+      reviewReason = `Produced quantity (${producedToDateMetre.toFixed(3)} MTR) exceeds planned Job Card target (${draft.plannedQtyMetre.toFixed(3)} MTR).`;
+    } else if (producedToDateMetre >= draft.plannedQtyMetre && draft.plannedQtyMetre > 0) {
+      productionStatus = "TARGET_REACHED";
+      materialSettlementStatus = "PENDING";
+    } else if (producedToDateMetre > 0) {
+      productionStatus = "IN_PROGRESS";
+    } else {
+      productionStatus = "NOT_STARTED";
+    }
+
+    const materialPositions = this.calculateMaterialOperationalPositions(draft, order, producedToDateMetre);
+
+    return {
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      loomId: draft.loomId,
+      loomNo: draft.loomNo,
+      plannedQtyMetre: draft.plannedQtyMetre,
+      producedTodayMetre,
+      producedToDateMetre,
+      remainingQtyMetre,
+      progressPercent,
+      productionStatus,
+      materialPositions,
+      entries,
+      materialSettlementStatus,
+      ...(reviewReason ? { reviewReason } : {}),
+    };
+  },
+
+  /**
+   * Computes Order-level Production Progress (Step 32).
+   */
+  getProductionOrderProgress(order: ProductionOrder): OrderProductionProgress {
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    const jobCardSummaries = drafts.map((draft) => {
+      const p = this.getJobCardProductionProgress(draft, order);
+      return {
+        jobCardDraftId: draft.id,
+        jobCardNo: draft.draftCardNo,
+        loomNo: draft.loomNo,
+        plannedQtyMetre: draft.plannedQtyMetre,
+        producedToDateMetre: p.producedToDateMetre,
+        remainingQtyMetre: p.remainingQtyMetre,
+        progressPercent: p.progressPercent,
+        status: p.productionStatus,
+      };
+    });
+
+    const totalProduced = sumQty(jobCardSummaries.map((s) => s.producedToDateMetre));
+    const remainingQtyMetre = Math.max(0, roundQty(order.qty_metre - totalProduced));
+    const progressPercent = calculateProgressPercent(order.qty_metre, totalProduced);
+
+    let status: OrderProductionProgress["status"] = "NOT_STARTED";
+    if (jobCardSummaries.some((s) => s.status === "REVIEW_REQUIRED")) {
+      status = "REVIEW_REQUIRED";
+    } else if (totalProduced >= order.qty_metre && order.qty_metre > 0) {
+      status = "TARGET_REACHED";
+    } else if (totalProduced > 0) {
+      status = "IN_PROGRESS";
+    }
+
+    return {
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      productionQtyMetre: order.qty_metre,
+      producedToDateMetre: totalProduced,
+      remainingQtyMetre,
+      progressPercent,
+      status,
+      jobCardSummaries,
+    };
+  },
+
+  /**
+   * Computes Loom-level Production Progress (Step 33).
+   */
+  getLoomProductionProgress(loomPlanId: string, order: ProductionOrder): LoomProductionProgress {
+    const plans = this.getLoomPlansForOrder(order.id);
+    const plan = plans.find((p) => p.id === loomPlanId) || {
+      id: loomPlanId,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      loomId: "lm-default",
+      loomNo: "LOOM-01",
+      loomType: "Jacquard",
+      pannaInch: 54,
+      plannedQty: order.qty_metre,
+      producedQty: 0,
+      remainingPlannedQty: order.qty_metre,
+      warpReadiness: "WARP READY",
+      weftReadiness: "WEFT READY",
+      planningStatus: "READY" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const drafts = this.getJobCardDraftsForOrder(order.id).filter((d) => d.loomPlanId === loomPlanId);
+    let producedToDateMetre = 0;
+    for (const d of drafts) {
+      const p = this.getJobCardProductionProgress(d, order);
+      producedToDateMetre = roundQty(producedToDateMetre + p.producedToDateMetre);
+    }
+
+    const remainingQtyMetre = Math.max(0, roundQty(plan.plannedQty - producedToDateMetre));
+    const progressPercent = calculateProgressPercent(plan.plannedQty, producedToDateMetre);
+
+    return {
+      loomId: plan.loomId,
+      loomNo: plan.loomNo,
+      productionOrderId: order.id,
+      plannedQtyMetre: plan.plannedQty,
+      producedToDateMetre,
+      remainingQtyMetre,
+      progressPercent,
+    };
+  },
+
+  /**
+   * Prepares Bulk Daily Production entry rows (Step 36, 37, 38).
+   */
+  getBulkDailyProductionRows(
+    order: ProductionOrder,
+    shift?: "A" | "B" | "C" | undefined
+  ): BulkDailyProductionRow[] {
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    return drafts.map((draft): BulkDailyProductionRow => {
+      const p = this.getJobCardProductionProgress(draft, order);
+      return {
+        jobCardDraftId: draft.id,
+        jobCardNo: draft.draftCardNo,
+        productionOrderId: order.id,
+        productionOrderNo: order.order_no,
+        loomId: draft.loomId,
+        loomNo: draft.loomNo,
+        itemCode: draft.itemCode || order.order_no,
+        designNo: draft.designNo || order.design_no,
+        plannedQtyMetre: draft.plannedQtyMetre,
+        producedToDateMetre: p.producedToDateMetre,
+        remainingQtyMetre: p.remainingQtyMetre,
+        todayQtyMetre: 0,
+        shift: shift || "A",
+        downtimeMinutes: 0,
+        downtimeReason: "",
+        remark: "",
+        isValid: true,
+      };
+    });
+  },
+
+  /**
+   * Saves bulk Daily Production entries with independent row validation (Step 36, 37).
+   */
+  saveBulkDailyProductionSimulation(params: {
+    order: ProductionOrder;
+    rows: {
+      jobCardDraftId: string;
+      todayQtyMetre: number;
+      shift?: "A" | "B" | "C" | undefined;
+      productionDate?: string | undefined;
+      downtimeMinutes?: number | undefined;
+      downtimeReason?: string | undefined;
+      remark?: string | undefined;
+    }[];
+  }): { success: boolean; createdCount: number; errors: string[] } {
+    const { order, rows } = params;
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    let createdCount = 0;
+    const errors: string[] = [];
+
+    for (const r of rows) {
+      if (r.todayQtyMetre > 0) {
+        const draft = drafts.find((d) => d.id === r.jobCardDraftId);
+        if (!draft) {
+          errors.push(`Job Card ${r.jobCardDraftId} not found.`);
+          continue;
+        }
+
+        const res = this.createDailyProductionSimulation({
+          draft,
+          order,
+          productionDate: r.productionDate,
+          shift: r.shift,
+          qtyMetre: r.todayQtyMetre,
+          downtimeMinutes: r.downtimeMinutes,
+          downtimeReason: r.downtimeReason,
+          remark: r.remark,
+        });
+
+        if (res.success) {
+          createdCount++;
+        } else if (res.error) {
+          errors.push(`${draft.draftCardNo}: ${res.error}`);
+        }
+      }
+    }
+
+    return { success: errors.length === 0, createdCount, errors };
+  },
+
+  /**
+   * Provides Job Card Completion Preview at TARGET REACHED (Step 41, 42, 43).
+   * Material settlement remains PENDING; does not auto-close Job Card.
+   */
+  getJobCardCompletionPreview(
+    draft: JobCardDraft,
+    order: ProductionOrder
+  ): JobCardCompletionPreview {
+    const p = this.getJobCardProductionProgress(draft, order);
+    const requiresReview = p.producedToDateMetre > draft.plannedQtyMetre;
+
+    return {
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      loomNo: draft.loomNo,
+      plannedQtyMetre: draft.plannedQtyMetre,
+      producedToDateMetre: p.producedToDateMetre,
+      materialPositions: p.materialPositions,
+      materialSettlementStatus: "PENDING",
+      requiresReview,
+      ...(requiresReview
+        ? {
+            reviewReason: `Produced ${p.producedToDateMetre.toFixed(3)} MTR exceeds planned target ${draft.plannedQtyMetre.toFixed(3)} MTR by ${(p.producedToDateMetre - draft.plannedQtyMetre).toFixed(3)} MTR.`,
+          }
+        : {}),
+    };
+  },
+
+  /**
+   * Clears in-memory daily production simulation entries (for test isolation/cleanup).
+   */
+  clearDailyProductionEntries(jobCardDraftId: string): void {
+    inMemoryDailyProductionEntries.delete(jobCardDraftId);
+  },
+
+  // =========================================================================
+  // AUTOMATED TEST SUITE FOR PHASE 4C (Test Cases A through M)
+  // =========================================================================
+
+  runPhase4CVerificationTests(): Record<string, { pass: boolean; details: string }> {
+    const results: Record<string, { pass: boolean; details: string }> = {};
+
+    const mockOrder4C: ProductionOrder = {
+      id: "po-test-4c-runner",
+      order_no: "PO-4C-TEST",
+      production_type: "CUSTOMER ORDER",
+      cost_sheet_id: "cs-test-ready-4a",
+      design_no: "D-015",
+      party_name: "Labdhi Sarees",
+      quality: "Kota Pashmina",
+      qty_metre: 2000,
+      delivery_date: "2026-10-15",
+      priority: "high",
+      status: "planned",
+      remarks: "",
+      created_at: new Date().toISOString(),
+    };
+
+    const mockPlan4C: LoomProductionPlan = {
+      id: "lp-4c-runner",
+      productionOrderId: "po-test-4c-runner",
+      productionOrderNo: "PO-4C-TEST",
+      loomId: "lm-test-4c",
+      loomNo: "LOOM-4C",
+      loomType: "Jacquard",
+      pannaInch: 54,
+      plannedQty: 2000,
+      producedQty: 0,
+      remainingPlannedQty: 2000,
+      beamNo: "BM-102",
+      beamType: "Kota Black Warp",
+      warpReadiness: "WARP READY",
+      weftReadiness: "WEFT READY",
+      planningStatus: "READY",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const draft4C = this.getJobCardDraftFromLoomPlan(mockPlan4C, mockOrder4C);
+    this.saveJobCardDraft(draft4C);
+    this.clearDailyProductionEntries(draft4C.id);
+    this.clearJobCardMaterialTransactions(draft4C.id);
+
+    const baseAlloc4C: MaterialAllocationPlan = {
+      id: "alloc-4c-base",
+      productionOrderId: "po-test-4c-runner",
+      productionOrderNo: "PO-4C-TEST",
+      materialRequirementId: "line-weft-ready-1",
+      materialId: "mat-30-kota-black-beam",
+      materialCode: "Y-23",
+      materialName: "30 KOTA BLACK BEAM",
+      sourceType: "WEFT",
+      sourceCostSheetId: "cs-test-ready-4a",
+      sourceCostSheetNo: "CS-4A-READY",
+      sourceLineLabel: "WEFT 1",
+      requiredQty: 88.572,
+      totalAvailableQty: 100,
+      totalPlannedQty: 88.572,
+      remainingQty: 0,
+      shortageQty: 0,
+      allocationStatus: "FULLY_ALLOCATED",
+      isManualOverride: false,
+      isStale: false,
+      plannedAt: new Date().toISOString(),
+      availabilityCheckedAt: new Date().toISOString(),
+      lines: [
+        {
+          lotId: "lot-4c-1",
+          lotNo: "LOT-4C-1",
+          locationBin: "RACK-1",
+          receivedDate: "2026-09-01",
+          supplierName: "Test Supplier",
+          totalStockKg: 50,
+          reservedKg: 0,
+          availableKg: 50,
+          fifoRank: 1,
+          suggestedQty: 50,
+          plannedQty: 50,
+          isManualOverride: false,
+        },
+      ],
+    };
+    this.saveAllocationPlan(baseAlloc4C);
+
+    // Test Case A — Single Production Entry (Step 49)
+    // Job Card: 2,000 MTR. Entry: 300 MTR.
+    // Expected: Produced: 300, Remaining: 1,700, Progress: 15%.
+    this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 300,
+      shift: "A",
+    });
+
+    const progA = this.getJobCardProductionProgress(draft4C, mockOrder4C);
+    const isTestAPass =
+      progA.producedToDateMetre === 300 &&
+      progA.remainingQtyMetre === 1700 &&
+      progA.progressPercent === 15 &&
+      progA.productionStatus === "IN_PROGRESS";
+
+    results["Test A (Single Production Entry -> 15% Progress)"] = {
+      pass: isTestAPass,
+      details: isTestAPass
+        ? `Produced: ${progA.producedToDateMetre}m, Remaining: ${progA.remainingQtyMetre}m, Progress: ${progA.progressPercent}%, Status: ${progA.productionStatus}`
+        : "Failed: Single production progress calculation incorrect",
+    };
+
+    // Test Case B — Multiple Days (Step 50)
+    // Add Day 2: 400 MTR, Day 3: 250 MTR. Total: 300 + 400 + 250 = 950 MTR.
+    // Remaining: 1,050 MTR.
+    this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 400,
+      shift: "B",
+    });
+    this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 250,
+      shift: "A",
+    });
+
+    const progB = this.getJobCardProductionProgress(draft4C, mockOrder4C);
+    const isTestBPass =
+      progB.producedToDateMetre === 950 &&
+      progB.remainingQtyMetre === 1050 &&
+      progB.progressPercent === 47.5;
+
+    results["Test B (Multiple Days Accumulation -> 950 MTR)"] = {
+      pass: isTestBPass,
+      details: isTestBPass
+        ? `Produced To Date: ${progB.producedToDateMetre}m across 3 entries, Remaining: ${progB.remainingQtyMetre}m, Progress: ${progB.progressPercent}%`
+        : "Failed: Multiple day accumulation incorrect",
+    };
+
+    // Test Case C — Negative Correction (Step 51)
+    // Clear and create 300 MTR. Add Correction: -20 MTR.
+    // Expected Effective: 280 MTR. History preserved (2 entries).
+    this.clearDailyProductionEntries(draft4C.id);
+    const initEntryC = this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 300,
+      shift: "A",
+    });
+    this.createDailyProductionCorrection({
+      draft: draft4C,
+      order: mockOrder4C,
+      originalEntryId: initEntryC.entry!.id,
+      correctionQtyMetre: -20,
+      reason: "Meter Reading Correction",
+    });
+
+    const progC = this.getJobCardProductionProgress(draft4C, mockOrder4C);
+    const isTestCPass =
+      progC.producedToDateMetre === 280 &&
+      progC.remainingQtyMetre === 1720 &&
+      progC.entries.length === 2 &&
+      progC.entries[0]?.qtyMetre === 300 &&
+      progC.entries[1]?.qtyMetre === -20;
+
+    results["Test C (Negative Correction -> 280 MTR Effective)"] = {
+      pass: isTestCPass,
+      details: isTestCPass
+        ? `Effective: ${progC.producedToDateMetre}m (Original: 300m, Correction: -20m). History preserved with 2 entries.`
+        : "Failed: Negative correction did not preserve history or calculate effective quantity",
+    };
+
+    // Test Case D — Positive Correction (Step 52)
+    // Clear and create 300 MTR. Add Correction: +20 MTR.
+    // Expected Effective: 320 MTR. History preserved.
+    this.clearDailyProductionEntries(draft4C.id);
+    const initEntryD = this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 300,
+      shift: "A",
+    });
+    this.createDailyProductionCorrection({
+      draft: draft4C,
+      order: mockOrder4C,
+      originalEntryId: initEntryD.entry!.id,
+      correctionQtyMetre: 20,
+      reason: "Shift Adjustment",
+    });
+
+    const progD = this.getJobCardProductionProgress(draft4C, mockOrder4C);
+    const isTestDPass =
+      progD.producedToDateMetre === 320 &&
+      progD.remainingQtyMetre === 1680 &&
+      progD.entries.length === 2;
+
+    results["Test D (Positive Correction -> 320 MTR Effective)"] = {
+      pass: isTestDPass,
+      details: isTestDPass
+        ? `Effective: ${progD.producedToDateMetre}m (Original: 300m, Correction: +20m). History preserved.`
+        : "Failed: Positive correction calculation incorrect",
+    };
+
+    // Test Case E — Over-Production Blocked (Step 53)
+    // Planned: 2,000 MTR. Produced: 1,950 MTR. Attempt: 100 MTR (Total would be 2,050 MTR).
+    // Expected: Blocked because production tolerance is not configured.
+    this.clearDailyProductionEntries(draft4C.id);
+    this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 1950,
+      shift: "A",
+    });
+    const overAttemptE = this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 100,
+      shift: "B",
+    });
+
+    const isTestEPass =
+      !overAttemptE.success &&
+      !!overAttemptE.error &&
+      overAttemptE.error.includes("Production tolerance is not configured") &&
+      overAttemptE.error.includes("Over-production by 50.000 MTR blocked");
+
+    results["Test E (Over-Production Blocked Without Tolerance)"] = {
+      pass: isTestEPass,
+      details: isTestEPass
+        ? `Correctly blocked: "${overAttemptE.error}"`
+        : "Failed: Over-production was improperly allowed",
+    };
+
+    // Test Case F — Expected Material Usage (Step 54)
+    // Cost Sheet consumption: Y-23 = 88.572 KG / 2000 MTR = 0.044286 KG/MTR.
+    // Produced To Date: 600 MTR.
+    // Expected to date = 0.044286 * 600 = 26.572 KG.
+    this.clearDailyProductionEntries(draft4C.id);
+    this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 600,
+      shift: "A",
+    });
+
+    const positionsF = this.calculateMaterialOperationalPositions(draft4C, mockOrder4C, 600);
+    const lineF = positionsF.find((p) => p.materialCode === "Y-23");
+    const isTestFPass =
+      !!lineF &&
+      lineF.expectedToDateKg === 26.58 &&
+      lineF.consumptionPerMetre === 0.0443;
+
+    results["Test F (Expected Material Usage Calculation)"] = {
+      pass: isTestFPass,
+      details: isTestFPass
+        ? `Produced: 600m @ ${lineF?.consumptionPerMetre} KG/m -> Expected To Date: ${lineF?.expectedToDateKg} KG`
+        : "Failed: Expected material calculation incorrect",
+    };
+
+    // Test Case G — Unsettled Material (Step 55)
+    // Produced To Date: 600 MTR -> Expected: 26.580 KG.
+    // Net Issued (simulated in Phase 4B): 35.000 KG.
+    // Expected: Unsettled = 35.000 - 26.580 = 8.420 KG. Shortfall = 0 KG.
+    // Crucial: Must NOT be labeled wastage.
+    this.clearJobCardMaterialTransactions(draft4C.id);
+    this.createInitialYarnIssueSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      materialCode: "Y-23",
+      lotId: "lot-4c-1",
+      lotNo: "LOT-4C-1",
+      qtyKg: 35.0,
+    });
+
+    const positionsG = this.calculateMaterialOperationalPositions(draft4C, mockOrder4C, 600);
+    const lineG = positionsG.find((p) => p.materialCode === "Y-23");
+    const isTestGPass =
+      !!lineG &&
+      lineG.unsettledKg === 8.42 &&
+      lineG.shortfallKg === 0 &&
+      lineG.status === "UNSETTLED_MATERIAL";
+
+    results["Test G (Unsettled Material Not Labeled Wastage)"] = {
+      pass: isTestGPass,
+      details: isTestGPass
+        ? `Net Issued: ${lineG?.netIssuedKg} KG, Expected: ${lineG?.expectedToDateKg} KG -> Unsettled: ${lineG?.unsettledKg} KG, Status: ${lineG?.status}`
+        : "Failed: Unsettled material calculation incorrect",
+    };
+
+    // Test Case H — Material Shortfall (Step 56)
+    // Clear and issue only 10.000 KG.
+    // Expected to Date for 600 MTR: 26.580 KG.
+    // Net Issued: 10.000 KG.
+    // Expected: Shortfall = 16.580 KG. Unsettled = 0 KG. Status: ISSUE_SHORTFALL.
+    // Action recommendation must indicate Prepare Additional Issue.
+    this.clearJobCardMaterialTransactions(draft4C.id);
+    this.createInitialYarnIssueSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      materialCode: "Y-23",
+      lotId: "lot-4c-1",
+      lotNo: "LOT-4C-1",
+      qtyKg: 10.0,
+    });
+
+    const positionsH = this.calculateMaterialOperationalPositions(draft4C, mockOrder4C, 600);
+    const lineH = positionsH.find((p) => p.materialCode === "Y-23");
+    const isTestHPass =
+      !!lineH &&
+      lineH.shortfallKg === 16.58 &&
+      lineH.unsettledKg === 0 &&
+      lineH.status === "ISSUE_SHORTFALL" &&
+      !!lineH.actionRecommendation &&
+      lineH.actionRecommendation.includes("Prepare Additional Issue");
+
+    results["Test H (Material Shortfall Flags Additional Issue)"] = {
+      pass: isTestHPass,
+      details: isTestHPass
+        ? `Net Issued: ${lineH?.netIssuedKg} KG, Expected: ${lineH?.expectedToDateKg} KG -> Shortfall: ${lineH?.shortfallKg} KG. Action: "${lineH?.actionRecommendation}"`
+        : "Failed: Material shortfall not flagged correctly",
+    };
+
+    // Test Case I — Target Revision (Step 57)
+    // Old Job Card: 2,000 MTR. Produced: 600 MTR.
+    // Target revised to 1,500 MTR.
+    // Expected: Produced 600 MTR preserved. Remaining: 900 MTR.
+    const revisedDraftI: JobCardDraft = { ...draft4C, plannedQtyMetre: 1500 };
+    this.saveJobCardDraft(revisedDraftI);
+
+    const progI = this.getJobCardProductionProgress(revisedDraftI, mockOrder4C);
+    const isTestIPass =
+      progI.producedToDateMetre === 600 &&
+      progI.remainingQtyMetre === 900 &&
+      progI.progressPercent === 40;
+
+    results["Test I (Target Revision Preserves Production History)"] = {
+      pass: isTestIPass,
+      details: isTestIPass
+        ? `Revised to 1,500m: Produced preserved at ${progI.producedToDateMetre}m, Remaining: ${progI.remainingQtyMetre}m, Progress: ${progI.progressPercent}%`
+        : "Failed: Target revision altered historical production",
+    };
+
+    // Test Case J — Target Below Actual (Step 58)
+    // Set entries total: 1,200 MTR. Revise Job Card target to 1,000 MTR.
+    // Expected: Historical 1,200 MTR preserved. Excess vs Target: 200 MTR.
+    // Status: REVIEW_REQUIRED.
+    this.clearDailyProductionEntries(draft4C.id);
+    this.saveJobCardDraft({ ...draft4C, plannedQtyMetre: 2000 });
+    this.createDailyProductionSimulation({
+      draft: { ...draft4C, plannedQtyMetre: 2000 },
+      order: mockOrder4C,
+      qtyMetre: 1200,
+      shift: "A",
+    });
+
+    const targetDropDraftJ: JobCardDraft = { ...draft4C, plannedQtyMetre: 1000 };
+    this.saveJobCardDraft(targetDropDraftJ);
+
+    const progJ = this.getJobCardProductionProgress(targetDropDraftJ, mockOrder4C);
+    const isTestJPass =
+      progJ.producedToDateMetre === 1200 &&
+      progJ.remainingQtyMetre === 0 &&
+      progJ.productionStatus === "REVIEW_REQUIRED" &&
+      !!progJ.reviewReason &&
+      progJ.reviewReason.includes("exceeds planned Job Card target");
+
+    results["Test J (Target Below Actual Flags REVIEW_REQUIRED)"] = {
+      pass: isTestJPass,
+      details: isTestJPass
+        ? `Historical: ${progJ.producedToDateMetre}m preserved. Target: ${targetDropDraftJ.plannedQtyMetre}m. Status: ${progJ.productionStatus} ("${progJ.reviewReason}")`
+        : "Failed: Status not marked REVIEW_REQUIRED when actual exceeds target",
+    };
+
+    // Test Case K — Loom Breakdown Replan (Step 59)
+    // Planned: 2,000 MTR. Produced: 600 MTR. Loom unavailable.
+    // Expected: Historical 600 preserved on original Loom. Remaining: 1,400 MTR.
+    this.clearDailyProductionEntries(draft4C.id);
+    this.saveJobCardDraft({ ...draft4C, plannedQtyMetre: 2000 });
+    this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 600,
+      shift: "A",
+    });
+
+    const progK = this.getJobCardProductionProgress(draft4C, mockOrder4C);
+    const isTestKPass =
+      progK.producedToDateMetre === 600 &&
+      progK.remainingQtyMetre === 1400 &&
+      progK.loomNo === "LOOM-4C";
+
+    results["Test K (Loom Breakdown Preserves Production on Original Loom)"] = {
+      pass: isTestKPass,
+      details: isTestKPass
+        ? `Loom ${progK.loomNo}: Produced ${progK.producedToDateMetre}m preserved. Replan Remaining: ${progK.remainingQtyMetre}m.`
+        : "Failed: Loom production preservation failed",
+    };
+
+    // Test Case L — Bulk Entry Mode (Step 60)
+    // 3 Job Cards (JC-1: 2000m, JC-2: 1000m, JC-3: 1500m).
+    // Bulk enter: 300m, 250m, 400m. Total = 950m.
+    // Expected: All 3 validated independently and recorded.
+    const draftL1: JobCardDraft = { ...draft4C, id: "jc-bulk-1", draftCardNo: "DRAFT-JC-L1", plannedQtyMetre: 2000, loomId: "lm-l1", loomNo: "L-01" };
+    const draftL2: JobCardDraft = { ...draft4C, id: "jc-bulk-2", draftCardNo: "DRAFT-JC-L2", plannedQtyMetre: 1000, loomId: "lm-l2", loomNo: "L-02" };
+    const draftL3: JobCardDraft = { ...draft4C, id: "jc-bulk-3", draftCardNo: "DRAFT-JC-L3", plannedQtyMetre: 1500, loomId: "lm-l3", loomNo: "L-03" };
+
+    const orderL: ProductionOrder = { ...mockOrder4C, id: "po-bulk-runner", qty_metre: 4500 };
+    inMemoryJobCardDrafts.set(orderL.id, [draftL1, draftL2, draftL3]);
+
+    this.clearDailyProductionEntries(draftL1.id);
+    this.clearDailyProductionEntries(draftL2.id);
+    this.clearDailyProductionEntries(draftL3.id);
+
+    const bulkRes = this.saveBulkDailyProductionSimulation({
+      order: orderL,
+      rows: [
+        { jobCardDraftId: draftL1.id, todayQtyMetre: 300, shift: "A" },
+        { jobCardDraftId: draftL2.id, todayQtyMetre: 250, shift: "A" },
+        { jobCardDraftId: draftL3.id, todayQtyMetre: 400, shift: "A" },
+      ],
+    });
+
+    const progL1 = this.getJobCardProductionProgress(draftL1, orderL);
+    const progL2 = this.getJobCardProductionProgress(draftL2, orderL);
+    const progL3 = this.getJobCardProductionProgress(draftL3, orderL);
+    const orderProgL = this.getProductionOrderProgress(orderL);
+
+    const isTestLPass =
+      bulkRes.success &&
+      bulkRes.createdCount === 3 &&
+      progL1.producedToDateMetre === 300 &&
+      progL2.producedToDateMetre === 250 &&
+      progL3.producedToDateMetre === 400 &&
+      orderProgL.producedToDateMetre === 950;
+
+    results["Test L (Bulk Daily Production Independent Validation)"] = {
+      pass: isTestLPass,
+      details: isTestLPass
+        ? `Bulk saved ${bulkRes.createdCount} entries: JC-1 (300m), JC-2 (250m), JC-3 (400m). Order Total Produced: ${orderProgL.producedToDateMetre}m.`
+        : "Failed: Bulk entry simulation failed",
+    };
+
+    // Test Case M — Job Target Reached (Step 61)
+    // Planned: 2,000 MTR. Produced: 2,000 MTR.
+    // Expected: Status: TARGET_REACHED. Material Settlement: PENDING.
+    // Crucial: No automatic closure, no fabric stock creation, no backend mutation.
+    this.clearDailyProductionEntries(draft4C.id);
+    this.saveJobCardDraft({ ...draft4C, plannedQtyMetre: 2000 });
+    this.createDailyProductionSimulation({
+      draft: draft4C,
+      order: mockOrder4C,
+      qtyMetre: 2000,
+      shift: "A",
+    });
+
+    const progM = this.getJobCardProductionProgress(draft4C, mockOrder4C);
+    const previewM = this.getJobCardCompletionPreview(draft4C, mockOrder4C);
+
+    const isTestMPass =
+      progM.producedToDateMetre === 2000 &&
+      progM.remainingQtyMetre === 0 &&
+      progM.progressPercent === 100 &&
+      progM.productionStatus === "TARGET_REACHED" &&
+      progM.materialSettlementStatus === "PENDING" &&
+      previewM.materialSettlementStatus === "PENDING";
+
+    results["Test M (Target Reached Flags Settlement Pending Without Auto-Close)"] = {
+      pass: isTestMPass,
+      details: isTestMPass
+        ? `Status: ${progM.productionStatus}, Progress: 100%, Material Settlement: ${progM.materialSettlementStatus}. Job Card remains open without authoritative closure.`
+        : "Failed: Target reached status or material settlement pending flag not set",
+    };
+
+    // Clean up test data
+    this.clearDailyProductionEntries(draft4C.id);
+    this.clearDailyProductionEntries(draftL1.id);
+    this.clearDailyProductionEntries(draftL2.id);
+    this.clearDailyProductionEntries(draftL3.id);
+    this.clearJobCardMaterialTransactions(draft4C.id);
+    inMemoryJobCardDrafts.delete(orderL.id);
+
+    return results;
   },
 
   // =========================================================================

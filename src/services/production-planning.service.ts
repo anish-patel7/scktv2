@@ -1020,6 +1020,243 @@ export function validateProductionEntry(params: {
   return { valid: true };
 }
 
+// =========================================================================
+// PHASE 5A TYPES & INTERFACES (Job Card Receive + Fabric Receipt + Roll Formation)
+// Frontend Execution Simulation Only — No Real Fabric Stock Posting — No Backend Changes
+// =========================================================================
+
+export type JobCardReceiveStatus =
+  | "NOT_RECEIVED"
+  | "PARTIALLY_RECEIVED"
+  | "FULLY_RECEIVED"
+  | "REVIEW_REQUIRED";
+
+export interface FabricRollDraft {
+  id: string;
+  receiveDraftId: string;
+  jobCardId: string;
+  productionOrderId: string;
+  rollSequence: number;
+  temporaryRollNo: string; // e.g. "DRAFT-ROLL-001"
+  qtyMetre: number;
+  grossWeightKg?: number | undefined;
+  netWeightKg?: number | undefined;
+  widthInch?: number | undefined;
+  locationHint?: string | undefined;
+  inspectionStatus: "UNINSPECTED"; // Step 17, 35: Always UNINSPECTED in Phase 5A
+  stockStatus: "DRAFT_GREY";       // Step 17: Grey fabric from weaving
+  isSaleable: false;               // Step 17: Never saleable before QC in 5B
+  remark?: string | undefined;
+}
+
+export interface JobCardReceiveSimulationTransaction {
+  id: string;
+  receiveRef: string; // e.g. "RCV-DRAFT-001"
+  transactionType: "RECEIPT" | "ADJUSTMENT";
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  productionOrderNo: string;
+  salesOrderId?: string | undefined;
+  salesOrderNo?: string | undefined;
+  customerName?: string | undefined;
+  itemCode?: string | undefined;
+  designNo?: string | undefined;
+  quality?: string | undefined;
+  loomId: string;
+  loomNo: string;
+  beamId?: string | undefined;
+  beamNo?: string | undefined;
+  receiveDate: string;
+  effectiveProducedQtyMetre: number;
+  previouslyReceivedQtyMetre: number;
+  qtyMetre: number; // Positive for RECEIPT, positive or negative for ADJUSTMENT
+  rollCount: number;
+  rolls: FabricRollDraft[];
+  status: "SAVED";
+  remark?: string | undefined;
+  adjustmentReason?: string | undefined;
+  createdAt: string;
+}
+
+export interface JobCardReceiveSummary {
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  productionOrderNo: string;
+  salesOrderId?: string | undefined;
+  salesOrderNo?: string | undefined;
+  customerName?: string | undefined;
+  itemCode?: string | undefined;
+  designNo?: string | undefined;
+  quality?: string | undefined;
+  priority?: string | undefined;
+  deliveryDate?: string | undefined;
+  loomId: string;
+  loomNo: string;
+  beamId?: string | undefined;
+  beamNo?: string | undefined;
+  plannedQtyMetre: number;
+  effectiveProducedQtyMetre: number;
+  totalReceivedQtyMetre: number;
+  receivableQtyMetre: number;         // max(effectiveProducedQtyMetre - totalReceivedQtyMetre, 0)
+  producedNotReceivedQtyMetre: number; // max(effectiveProducedQtyMetre - totalReceivedQtyMetre, 0)
+  status: JobCardReceiveStatus;
+  totalRollDraftCount: number;
+  allRollDrafts: FabricRollDraft[];
+  transactions: JobCardReceiveSimulationTransaction[];
+  isProductionTargetReached: boolean;
+  isFabricReceiptComplete: boolean;
+  materialSettlementStatus: "PENDING";
+  qualityStatus: "PENDING";
+  jobCardClosureStatus: "NOT AVAILABLE";
+  requiresReview: boolean;
+  reviewReason?: string | undefined;
+}
+
+export interface ProductionOrderReceiveSummary {
+  productionOrderId: string;
+  productionOrderNo: string;
+  orderQtyMetre: number;
+  producedToDateMetre: number;
+  totalReceivedMetre: number;
+  producedNotReceivedMetre: number;
+  rollDraftCount: number;
+  jobCardsCount: number;
+  jobCardsSummary: JobCardReceiveSummary[];
+}
+
+// In-Memory Execution Simulation Store (Phase 5A - Frontend only)
+const inMemoryJobCardReceiveTransactions = new Map<string, JobCardReceiveSimulationTransaction[]>();
+
+// =========================================================================
+// PHASE 5A PURE HELPER FUNCTIONS (Step 44, 45)
+// =========================================================================
+
+export function sumReceipts(transactions: JobCardReceiveSimulationTransaction[]): number {
+  return roundQty(sumQty(transactions.filter((t) => t.transactionType === "RECEIPT").map((t) => t.qtyMetre)));
+}
+
+export function sumReceiptAdjustments(transactions: JobCardReceiveSimulationTransaction[]): number {
+  return roundQty(sumQty(transactions.filter((t) => t.transactionType === "ADJUSTMENT").map((t) => t.qtyMetre)));
+}
+
+export function calculateEffectiveReceived(transactions: JobCardReceiveSimulationTransaction[]): number {
+  const receipts = sumReceipts(transactions);
+  const adjustments = sumReceiptAdjustments(transactions);
+  return roundQty(Math.max(0, receipts + adjustments));
+}
+
+export function calculateReceivable(effectiveProduced: number, effectiveReceived: number): number {
+  return roundQty(Math.max(0, effectiveProduced - effectiveReceived));
+}
+
+export function calculateProducedNotReceived(effectiveProduced: number, effectiveReceived: number): number {
+  return roundQty(Math.max(0, effectiveProduced - effectiveReceived));
+}
+
+export function calculateRollTotal(rolls: Array<{ qtyMetre: number }>): number {
+  return roundQty(sumQty(rolls.map((r) => r.qtyMetre)));
+}
+
+export function calculateRollBalance(receiveQty: number, rolls: Array<{ qtyMetre: number }>): number {
+  return roundQty(receiveQty - calculateRollTotal(rolls));
+}
+
+export function validateReceiveQty(params: {
+  effectiveProducedQty: number;
+  totalReceivedQty: number;
+  attemptReceiveQty: number;
+}): { valid: boolean; receivableQty: number; error?: string } {
+  const { effectiveProducedQty, totalReceivedQty, attemptReceiveQty } = params;
+  const receivableQty = calculateReceivable(effectiveProducedQty, totalReceivedQty);
+
+  if (attemptReceiveQty <= 0) {
+    return {
+      valid: false,
+      receivableQty,
+      error: "Receive quantity must be greater than zero.",
+    };
+  }
+
+  // Step 6: RECEIVE MUST NOT EXCEED PRODUCTION
+  if (attemptReceiveQty > receivableQty) {
+    const excess = roundQty(attemptReceiveQty - receivableQty);
+    return {
+      valid: false,
+      receivableQty,
+      error: `Receive quantity exceeds produced but unreceived quantity by ${excess.toFixed(3)} MTR.`,
+    };
+  }
+
+  return { valid: true, receivableQty };
+}
+
+export function validateRollDistribution(
+  receiveQty: number,
+  rolls: Array<{ qtyMetre: number }>
+): { valid: boolean; rollTotal: number; balance: number; error?: string } {
+  const rollTotal = calculateRollTotal(rolls);
+  const balance = calculateRollBalance(receiveQty, rolls);
+
+  if (rolls.length === 0) {
+    return {
+      valid: false,
+      rollTotal: 0,
+      balance: receiveQty,
+      error: "At least one roll/piece must be defined.",
+    };
+  }
+
+  for (let i = 0; i < rolls.length; i++) {
+    if (rolls[i]!.qtyMetre <= 0) {
+      return {
+        valid: false,
+        rollTotal,
+        balance,
+        error: `Roll #${i + 1} quantity must be greater than zero.`,
+      };
+    }
+  }
+
+  // Step 12: Roll total validation
+  if (balance > 0.0001) {
+    return {
+      valid: false,
+      rollTotal,
+      balance,
+      error: `${balance.toFixed(3)} MTR UNALLOCATED`,
+    };
+  }
+
+  if (balance < -0.0001) {
+    return {
+      valid: false,
+      rollTotal,
+      balance,
+      error: `${Math.abs(balance).toFixed(3)} MTR EXCESS`,
+    };
+  }
+
+  return { valid: true, rollTotal, balance: 0 };
+}
+
+export function splitQuantityEqually(totalQty: number, rollCount: number): Array<{ qtyMetre: number }> {
+  if (rollCount <= 0 || totalQty <= 0) return [];
+  const baseQty = Math.floor((totalQty / rollCount) * 1000) / 1000;
+  const rolls: Array<{ qtyMetre: number }> = [];
+  let allocated = 0;
+  for (let i = 0; i < rollCount; i++) {
+    if (i === rollCount - 1) {
+      rolls.push({ qtyMetre: roundQty(totalQty - allocated) });
+    } else {
+      rolls.push({ qtyMetre: baseQty });
+      allocated = roundQty(allocated + baseQty);
+    }
+  }
+  return rolls;
+}
+
 /**
  * Service Layer for SCKT Production Planning Phase 1, 2, 3, 3B, 4A & 4B.
  * Connects Sales Order -> Production Order -> Cost Sheet -> Material Requirement -> FIFO Allocation -> Revision Delta -> Warp/Beam & Weft Job-Card Planning -> Release Readiness & Execution Preparation -> Yarn Issue & Return Execution Simulation.
@@ -5211,6 +5448,930 @@ export const ProductionPlanningService = {
    */
   clearDailyProductionEntries(jobCardDraftId: string): void {
     inMemoryDailyProductionEntries.delete(jobCardDraftId);
+  },
+
+  // =========================================================================
+  // PHASE 5A SERVICE METHODS (Job Card Receive + Roll Formation Simulation)
+  // =========================================================================
+
+  getJobCardReceiveTransactions(jobCardDraftId: string): JobCardReceiveSimulationTransaction[] {
+    return inMemoryJobCardReceiveTransactions.get(jobCardDraftId) ?? [];
+  },
+
+  validateJobCardReceiveQty(params: {
+    effectiveProducedQty: number;
+    totalReceivedQty: number;
+    attemptReceiveQty: number;
+  }): { valid: boolean; receivableQty: number; error?: string } {
+    return validateReceiveQty(params);
+  },
+
+  validateJobCardRollDistribution(
+    receiveQty: number,
+    rolls: Array<{ qtyMetre: number }>
+  ): { valid: boolean; rollTotal: number; balance: number; error?: string } {
+    return validateRollDistribution(receiveQty, rolls);
+  },
+
+  createJobCardReceiveSimulation(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    receiveDate: string;
+    receiveQtyMetre: number;
+    rolls: Array<{
+      qtyMetre: number;
+      grossWeightKg?: number | undefined;
+      netWeightKg?: number | undefined;
+      widthInch?: number | undefined;
+      locationHint?: string | undefined;
+      remark?: string | undefined;
+    }>;
+    remark?: string | undefined;
+  }): {
+    success: boolean;
+    transaction?: JobCardReceiveSimulationTransaction;
+    error?: string;
+  } {
+    const { draft, order, receiveDate, receiveQtyMetre, rolls, remark } = params;
+
+    const progress = this.getJobCardProductionProgress(draft, order);
+    const effectiveProduced = progress.producedToDateMetre;
+    const existingTxs = this.getJobCardReceiveTransactions(draft.id);
+    const previouslyReceived = calculateEffectiveReceived(existingTxs);
+
+    const qtyValidation = validateReceiveQty({
+      effectiveProducedQty: effectiveProduced,
+      totalReceivedQty: previouslyReceived,
+      attemptReceiveQty: receiveQtyMetre,
+    });
+
+    if (!qtyValidation.valid) {
+      return { success: false, ...(qtyValidation.error ? { error: qtyValidation.error } : {}) };
+    }
+
+    const rollValidation = validateRollDistribution(receiveQtyMetre, rolls);
+    if (!rollValidation.valid) {
+      return { success: false, ...(rollValidation.error ? { error: rollValidation.error } : {}) };
+    }
+
+    const currentTotalRolls = existingTxs.reduce((sum, t) => sum + t.rolls.length, 0);
+    const receiveRef = `RCV-DRAFT-${String(existingTxs.length + 1).padStart(3, "0")}`;
+    const txId = `rcv-tx-${draft.id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+    const fabricRollDrafts: FabricRollDraft[] = rolls.map((r, idx) => {
+      const rollSeq = currentTotalRolls + idx + 1;
+      return {
+        id: `roll-${txId}-${rollSeq}`,
+        receiveDraftId: txId,
+        jobCardId: draft.id,
+        productionOrderId: order.id,
+        rollSequence: rollSeq,
+        temporaryRollNo: `DRAFT-ROLL-${String(rollSeq).padStart(3, "0")}`,
+        qtyMetre: roundQty(r.qtyMetre),
+        ...(r.grossWeightKg !== undefined ? { grossWeightKg: roundQty(r.grossWeightKg) } : {}),
+        ...(r.netWeightKg !== undefined ? { netWeightKg: roundQty(r.netWeightKg) } : {}),
+        ...(r.widthInch !== undefined ? { widthInch: r.widthInch } : {}),
+        ...(r.locationHint ? { locationHint: r.locationHint } : {}),
+        inspectionStatus: "UNINSPECTED",
+        stockStatus: "DRAFT_GREY",
+        isSaleable: false,
+        ...(r.remark ? { remark: r.remark } : {}),
+      };
+    });
+
+    const transaction: JobCardReceiveSimulationTransaction = {
+      id: txId,
+      receiveRef,
+      transactionType: "RECEIPT",
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      ...(order.sales_order_id ? { salesOrderId: order.sales_order_id } : {}),
+      ...(order.sales_order_no ? { salesOrderNo: order.sales_order_no } : {}),
+      ...(order.party_name ? { customerName: order.party_name } : {}),
+      ...(order.design_no ? { designNo: order.design_no } : {}),
+      ...(order.quality ? { quality: order.quality } : {}),
+      loomId: draft.loomId,
+      loomNo: draft.loomNo,
+      ...(draft.beamPlanId ? { beamId: draft.beamPlanId } : {}),
+      ...(draft.beamNo ? { beamNo: draft.beamNo } : {}),
+      receiveDate,
+      effectiveProducedQtyMetre: effectiveProduced,
+      previouslyReceivedQtyMetre: previouslyReceived,
+      qtyMetre: roundQty(receiveQtyMetre),
+      rollCount: fabricRollDrafts.length,
+      rolls: fabricRollDrafts,
+      status: "SAVED",
+      ...(remark ? { remark } : {}),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [...existingTxs, transaction];
+    inMemoryJobCardReceiveTransactions.set(draft.id, updated);
+
+    return { success: true, transaction };
+  },
+
+  createReceiptAdjustmentSimulation(params: {
+    draft: JobCardDraft;
+    order: ProductionOrder;
+    adjustmentQtyMetre: number;
+    reason: string;
+    rollsAdjustment?: Array<{
+      qtyMetre: number;
+      grossWeightKg?: number | undefined;
+      netWeightKg?: number | undefined;
+      widthInch?: number | undefined;
+      locationHint?: string | undefined;
+      remark?: string | undefined;
+    }> | undefined;
+    remark?: string | undefined;
+  }): {
+    success: boolean;
+    transaction?: JobCardReceiveSimulationTransaction;
+    error?: string;
+  } {
+    const { draft, order, adjustmentQtyMetre, reason, rollsAdjustment, remark } = params;
+
+    if (Math.abs(adjustmentQtyMetre) < 0.001) {
+      return { success: false, error: "Adjustment quantity cannot be zero." };
+    }
+
+    const progress = this.getJobCardProductionProgress(draft, order);
+    const effectiveProduced = progress.producedToDateMetre;
+    const existingTxs = this.getJobCardReceiveTransactions(draft.id);
+    const previouslyReceived = calculateEffectiveReceived(existingTxs);
+
+    const resultingReceived = roundQty(previouslyReceived + adjustmentQtyMetre);
+    if (resultingReceived < 0) {
+      return {
+        success: false,
+        error: `Adjustment would cause negative total received quantity (${resultingReceived.toFixed(3)} MTR).`,
+      };
+    }
+
+    if (rollsAdjustment && rollsAdjustment.length > 0) {
+      const rollValidation = validateRollDistribution(Math.abs(adjustmentQtyMetre), rollsAdjustment);
+      if (!rollValidation.valid) {
+        return {
+          success: false,
+          error: `ROLL RECONCILIATION REQUIRED: ${rollValidation.error}`,
+        };
+      }
+    }
+
+    const txId = `adj-tx-${draft.id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const receiveRef = `ADJ-DRAFT-${String(existingTxs.length + 1).padStart(3, "0")}`;
+    const currentTotalRolls = existingTxs.reduce((sum, t) => sum + t.rolls.length, 0);
+
+    const fabricRollDrafts: FabricRollDraft[] = (rollsAdjustment || []).map((r, idx) => {
+      const rollSeq = currentTotalRolls + idx + 1;
+      return {
+        id: `roll-${txId}-${rollSeq}`,
+        receiveDraftId: txId,
+        jobCardId: draft.id,
+        productionOrderId: order.id,
+        rollSequence: rollSeq,
+        temporaryRollNo: `DRAFT-ROLL-${String(rollSeq).padStart(3, "0")}`,
+        qtyMetre: roundQty(r.qtyMetre),
+        ...(r.grossWeightKg !== undefined ? { grossWeightKg: roundQty(r.grossWeightKg) } : {}),
+        ...(r.netWeightKg !== undefined ? { netWeightKg: roundQty(r.netWeightKg) } : {}),
+        ...(r.widthInch !== undefined ? { widthInch: r.widthInch } : {}),
+        ...(r.locationHint ? { locationHint: r.locationHint } : {}),
+        inspectionStatus: "UNINSPECTED",
+        stockStatus: "DRAFT_GREY",
+        isSaleable: false,
+        ...(r.remark ? { remark: r.remark } : {}),
+      };
+    });
+
+    const transaction: JobCardReceiveSimulationTransaction = {
+      id: txId,
+      receiveRef,
+      transactionType: "ADJUSTMENT",
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      loomId: draft.loomId,
+      loomNo: draft.loomNo,
+      receiveDate: new Date().toISOString().split("T")[0]!,
+      effectiveProducedQtyMetre: effectiveProduced,
+      previouslyReceivedQtyMetre: previouslyReceived,
+      qtyMetre: roundQty(adjustmentQtyMetre),
+      rollCount: fabricRollDrafts.length,
+      rolls: fabricRollDrafts,
+      status: "SAVED",
+      adjustmentReason: reason,
+      ...(remark ? { remark } : {}),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [...existingTxs, transaction];
+    inMemoryJobCardReceiveTransactions.set(draft.id, updated);
+
+    return { success: true, transaction };
+  },
+
+  getJobCardReceiveSummary(draft: JobCardDraft, order: ProductionOrder): JobCardReceiveSummary {
+    const progress = this.getJobCardProductionProgress(draft, order);
+    const effectiveProducedQtyMetre = progress.producedToDateMetre;
+    const transactions = this.getJobCardReceiveTransactions(draft.id);
+    const totalReceivedQtyMetre = calculateEffectiveReceived(transactions);
+    const receivableQtyMetre = calculateReceivable(effectiveProducedQtyMetre, totalReceivedQtyMetre);
+    const producedNotReceivedQtyMetre = calculateProducedNotReceived(effectiveProducedQtyMetre, totalReceivedQtyMetre);
+
+    const allRollDrafts = transactions.flatMap((t) => t.rolls);
+    const totalRollDraftCount = allRollDrafts.length;
+
+    let status: JobCardReceiveStatus = "NOT_RECEIVED";
+    let requiresReview = false;
+    let reviewReason: string | undefined = undefined;
+
+    // Step 23 & Test G: Production Negative Correction causes receipt to exceed effective production
+    if (totalReceivedQtyMetre > effectiveProducedQtyMetre) {
+      status = "REVIEW_REQUIRED";
+      requiresReview = true;
+      const diff = roundQty(totalReceivedQtyMetre - effectiveProducedQtyMetre);
+      reviewReason = `RECEIPT EXCEEDS EFFECTIVE PRODUCTION by ${diff.toFixed(3)} MTR. Historical receipts preserved. Review required.`;
+    } else if (totalReceivedQtyMetre > draft.plannedQtyMetre) {
+      // Step 26: Target below received
+      status = "REVIEW_REQUIRED";
+      requiresReview = true;
+      const diff = roundQty(totalReceivedQtyMetre - draft.plannedQtyMetre);
+      reviewReason = `Received quantity (${totalReceivedQtyMetre.toFixed(3)} MTR) exceeds revised Job Card target (${draft.plannedQtyMetre.toFixed(3)} MTR) by ${diff.toFixed(3)} MTR. Review required.`;
+    } else if (totalReceivedQtyMetre === 0) {
+      status = "NOT_RECEIVED";
+    } else if (effectiveProducedQtyMetre > 0 && Math.abs(totalReceivedQtyMetre - effectiveProducedQtyMetre) < 0.001) {
+      // Step 39: FULLY_RECEIVED relative to produced quantity
+      status = "FULLY_RECEIVED";
+    } else {
+      status = "PARTIALLY_RECEIVED";
+    }
+
+    const isProductionTargetReached = effectiveProducedQtyMetre >= draft.plannedQtyMetre;
+    const isFabricReceiptComplete = isProductionTargetReached && totalReceivedQtyMetre >= draft.plannedQtyMetre;
+
+    return {
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      ...(order.sales_order_id ? { salesOrderId: order.sales_order_id } : {}),
+      ...(order.sales_order_no ? { salesOrderNo: order.sales_order_no } : {}),
+      ...(order.party_name ? { customerName: order.party_name } : {}),
+      ...(order.design_no ? { designNo: order.design_no } : {}),
+      ...(order.quality ? { quality: order.quality } : {}),
+      ...(order.priority ? { priority: order.priority } : {}),
+      ...(order.delivery_date ? { deliveryDate: order.delivery_date } : {}),
+      loomId: draft.loomId,
+      loomNo: draft.loomNo,
+      ...(draft.beamPlanId ? { beamId: draft.beamPlanId } : {}),
+      ...(draft.beamNo ? { beamNo: draft.beamNo } : {}),
+      plannedQtyMetre: draft.plannedQtyMetre,
+      effectiveProducedQtyMetre,
+      totalReceivedQtyMetre,
+      receivableQtyMetre,
+      producedNotReceivedQtyMetre,
+      status,
+      totalRollDraftCount,
+      allRollDrafts,
+      transactions,
+      isProductionTargetReached,
+      isFabricReceiptComplete,
+      materialSettlementStatus: "PENDING",
+      qualityStatus: "PENDING",
+      jobCardClosureStatus: "NOT AVAILABLE",
+      requiresReview,
+      ...(reviewReason ? { reviewReason } : {}),
+    };
+  },
+
+  getProductionOrderReceiveSummary(order: ProductionOrder): ProductionOrderReceiveSummary {
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    const jcSummaries = drafts.map((d) => this.getJobCardReceiveSummary(d, order));
+
+    const producedToDateMetre = roundQty(sumQty(jcSummaries.map((s) => s.effectiveProducedQtyMetre)));
+    const totalReceivedMetre = roundQty(sumQty(jcSummaries.map((s) => s.totalReceivedQtyMetre)));
+    const producedNotReceivedMetre = roundQty(Math.max(0, producedToDateMetre - totalReceivedMetre));
+    const rollDraftCount = sumQty(jcSummaries.map((s) => s.totalRollDraftCount));
+
+    return {
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      orderQtyMetre: order.qty_metre,
+      producedToDateMetre,
+      totalReceivedMetre,
+      producedNotReceivedMetre,
+      rollDraftCount,
+      jobCardsCount: drafts.length,
+      jobCardsSummary: jcSummaries,
+    };
+  },
+
+  clearJobCardReceiveTransactions(jobCardDraftId: string): void {
+    inMemoryJobCardReceiveTransactions.delete(jobCardDraftId);
+  },
+
+  // =========================================================================
+  // AUTOMATED TEST SUITE FOR PHASE 5A (Test Cases A through M)
+  // =========================================================================
+
+  runPhase5AVerificationTests(): Record<string, { pass: boolean; details: string }> {
+    const results: Record<string, { pass: boolean; details: string }> = {};
+
+    const mockOrder5A: ProductionOrder = {
+      id: "po-test-5a-runner",
+      order_no: "PO-5A-TEST",
+      production_type: "CUSTOMER ORDER",
+      cost_sheet_id: "cs-sample-001",
+      design_no: "D-015",
+      party_name: "Labdhi Sarees",
+      quality: "Silk",
+      qty_metre: 2000,
+      delivery_date: "2026-10-15",
+      priority: "high",
+      status: "planned",
+      remarks: "",
+      created_at: new Date().toISOString(),
+    };
+
+    const draft5A: JobCardDraft = {
+      id: "jc-draft-5a-main",
+      draftCardNo: "JC-5A-01",
+      loomPlanId: "lp-test-5a",
+      productionOrderId: mockOrder5A.id,
+      productionOrderNo: mockOrder5A.order_no,
+      salesOrderNo: "SO/DEMO",
+      customerName: "Labdhi Sarees",
+      itemCode: "SL02-SALSA",
+      designNo: "D-015",
+      quality: "Silk",
+      loomId: "lm-01",
+      loomNo: "LOOM-01",
+      loomType: "Jacquard",
+      pannaInch: 54,
+      plannedQtyMetre: 2000,
+      unit: "MTR",
+      priority: "high",
+      deliveryDate: "2026-10-15",
+      costSheetNo: "CS-001",
+      warpReadiness: "WARP READY",
+      weftReadiness: "WEFT READY",
+      status: "READY",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Clean initial state
+    this.clearDailyProductionEntries(draft5A.id);
+    this.clearJobCardReceiveTransactions(draft5A.id);
+
+    // -------------------------------------------------------------
+    // Test Case A — Partial Receive (Step 51)
+    // Produced: 1,000 MTR, Received: 600 MTR -> Receivable: 400 MTR
+    // -------------------------------------------------------------
+    this.createDailyProductionSimulation({
+      draft: draft5A,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 1000,
+    });
+
+    const resA = this.createJobCardReceiveSimulation({
+      draft: draft5A,
+      order: mockOrder5A,
+      receiveDate: "2026-10-01",
+      receiveQtyMetre: 600,
+      rolls: [{ qtyMetre: 600 }],
+    });
+
+    const summaryA = this.getJobCardReceiveSummary(draft5A, mockOrder5A);
+    const isTestAPass =
+      resA.success &&
+      summaryA.effectiveProducedQtyMetre === 1000 &&
+      summaryA.totalReceivedQtyMetre === 600 &&
+      summaryA.receivableQtyMetre === 400 &&
+      summaryA.status === "PARTIALLY_RECEIVED";
+
+    results["Test A (Partial Receive: Produced 1000, Received 600 -> Receivable 400)"] = {
+      pass: isTestAPass,
+      details: isTestAPass
+        ? `Produced: ${summaryA.effectiveProducedQtyMetre}m, Received: ${summaryA.totalReceivedQtyMetre}m, Receivable: ${summaryA.receivableQtyMetre}m, Status: ${summaryA.status}`
+        : `Failed: produced=${summaryA.effectiveProducedQtyMetre}, received=${summaryA.totalReceivedQtyMetre}, receivable=${summaryA.receivableQtyMetre}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case B — Multiple Receipts (Step 52)
+    // Produced: 2,000 MTR, Receipt 1: 700 MTR, Receipt 2: 500 MTR -> Total: 1,200, Receivable: 800
+    // -------------------------------------------------------------
+    const draft5B: JobCardDraft = { ...draft5A, id: "jc-draft-5b" };
+    this.clearDailyProductionEntries(draft5B.id);
+    this.clearJobCardReceiveTransactions(draft5B.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5B,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 2000,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5B,
+      order: mockOrder5A,
+      receiveDate: "2026-10-02",
+      receiveQtyMetre: 700,
+      rolls: [{ qtyMetre: 700 }],
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5B,
+      order: mockOrder5A,
+      receiveDate: "2026-10-03",
+      receiveQtyMetre: 500,
+      rolls: [{ qtyMetre: 500 }],
+    });
+
+    const summaryB = this.getJobCardReceiveSummary(draft5B, mockOrder5A);
+    const isTestBPass =
+      summaryB.totalReceivedQtyMetre === 1200 &&
+      summaryB.receivableQtyMetre === 800 &&
+      summaryB.transactions.length === 2;
+
+    results["Test B (Multiple Receipts: 700 + 500 -> Total 1200, Receivable 800)"] = {
+      pass: isTestBPass,
+      details: isTestBPass
+        ? `Transactions: 2, Total Received: ${summaryB.totalReceivedQtyMetre}m, Receivable: ${summaryB.receivableQtyMetre}m`
+        : `Failed: totalReceived=${summaryB.totalReceivedQtyMetre}, receivable=${summaryB.receivableQtyMetre}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case C — Receive Above Production Blocked (Step 53)
+    // Produced: 1,000 MTR, Received: 800 MTR, Attempt: 300 MTR -> BLOCKED by 100 MTR
+    // -------------------------------------------------------------
+    const draft5C: JobCardDraft = { ...draft5A, id: "jc-draft-5c" };
+    this.clearDailyProductionEntries(draft5C.id);
+    this.clearJobCardReceiveTransactions(draft5C.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5C,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 1000,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5C,
+      order: mockOrder5A,
+      receiveDate: "2026-10-02",
+      receiveQtyMetre: 800,
+      rolls: [{ qtyMetre: 800 }],
+    });
+
+    const attemptC = this.createJobCardReceiveSimulation({
+      draft: draft5C,
+      order: mockOrder5A,
+      receiveDate: "2026-10-03",
+      receiveQtyMetre: 300,
+      rolls: [{ qtyMetre: 300 }],
+    });
+
+    const isTestCPass =
+      !attemptC.success &&
+      !!attemptC.error &&
+      attemptC.error.includes("exceeds produced but unreceived quantity by 100.000 MTR");
+
+    results["Test C (Receive Above Production Blocked: Exceeds by 100 MTR)"] = {
+      pass: isTestCPass,
+      details: isTestCPass
+        ? `Correctly blocked: "${attemptC.error}"`
+        : `Failed: attemptC.success=${attemptC.success}, error="${attemptC.error}"`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case D — Roll Split Validation (Step 54)
+    // Receive: 800 MTR, Rolls: 210, 205, 198, 187 -> Total: 800 MTR, Balance: 0
+    // -------------------------------------------------------------
+    const valD = this.validateJobCardRollDistribution(800, [
+      { qtyMetre: 210 },
+      { qtyMetre: 205 },
+      { qtyMetre: 198 },
+      { qtyMetre: 187 },
+    ]);
+
+    const isTestDPass = valD.valid && valD.rollTotal === 800 && valD.balance === 0;
+    results["Test D (Roll Split: 210 + 205 + 198 + 187 = 800 MTR, Balance 0)"] = {
+      pass: isTestDPass,
+      details: isTestDPass
+        ? `Roll Total: ${valD.rollTotal}m, Balance: ${valD.balance}m. Valid.`
+        : `Failed: valid=${valD.valid}, rollTotal=${valD.rollTotal}, balance=${valD.balance}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case E — Roll Short Validation (Step 55)
+    // Receive: 800 MTR, Rolls: 780 MTR -> 20.000 MTR UNALLOCATED
+    // -------------------------------------------------------------
+    const valE = this.validateJobCardRollDistribution(800, [
+      { qtyMetre: 210 },
+      { qtyMetre: 205 },
+      { qtyMetre: 198 },
+      { qtyMetre: 167 },
+    ]);
+
+    const isTestEPass =
+      !valE.valid &&
+      valE.rollTotal === 780 &&
+      !!valE.error &&
+      valE.error.includes("20.000 MTR UNALLOCATED");
+
+    results["Test E (Roll Short: 780 MTR vs 800 MTR -> 20 MTR UNALLOCATED)"] = {
+      pass: isTestEPass,
+      details: isTestEPass
+        ? `Correctly flagged: "${valE.error}"`
+        : `Failed: valid=${valE.valid}, error="${valE.error}"`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case F — Roll Excess Validation (Step 56)
+    // Receive: 800 MTR, Rolls: 820 MTR -> 20.000 MTR EXCESS
+    // -------------------------------------------------------------
+    const valF = this.validateJobCardRollDistribution(800, [
+      { qtyMetre: 210 },
+      { qtyMetre: 205 },
+      { qtyMetre: 198 },
+      { qtyMetre: 207 },
+    ]);
+
+    const isTestFPass =
+      !valF.valid &&
+      valF.rollTotal === 820 &&
+      !!valF.error &&
+      valF.error.includes("20.000 MTR EXCESS");
+
+    results["Test F (Roll Excess: 820 MTR vs 800 MTR -> 20 MTR EXCESS)"] = {
+      pass: isTestFPass,
+      details: isTestFPass
+        ? `Correctly blocked: "${valF.error}"`
+        : `Failed: valid=${valF.valid}, error="${valF.error}"`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case G — Negative Production Correction Impact (Step 57)
+    // Produced: 1,000 MTR, Received: 1,000 MTR, Correction: -100 MTR
+    // Effective Produced: 900 MTR, Received: 1,000 MTR -> REVIEW_REQUIRED
+    // -------------------------------------------------------------
+    const draft5G: JobCardDraft = { ...draft5A, id: "jc-draft-5g" };
+    this.clearDailyProductionEntries(draft5G.id);
+    this.clearJobCardReceiveTransactions(draft5G.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5G,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 1000,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5G,
+      order: mockOrder5A,
+      receiveDate: "2026-10-01",
+      receiveQtyMetre: 1000,
+      rolls: [{ qtyMetre: 1000 }],
+    });
+
+    // Production correction of -100 MTR
+    this.createDailyProductionCorrection({
+      draft: draft5G,
+      order: mockOrder5A,
+      originalEntryId: "entry-5a-g",
+      correctionQtyMetre: -100,
+      reason: "Meter Reading Correction",
+    });
+
+    const summaryG = this.getJobCardReceiveSummary(draft5G, mockOrder5A);
+    const isTestGPass =
+      summaryG.effectiveProducedQtyMetre === 900 &&
+      summaryG.totalReceivedQtyMetre === 1000 &&
+      summaryG.status === "REVIEW_REQUIRED" &&
+      summaryG.requiresReview === true &&
+      summaryG.transactions.length === 1 && // Not silently deleted
+      !!summaryG.reviewReason &&
+      summaryG.reviewReason.includes("RECEIPT EXCEEDS EFFECTIVE PRODUCTION by 100.000 MTR");
+
+    results["Test G (Negative Production Correction -> REVIEW_REQUIRED, History Preserved)"] = {
+      pass: isTestGPass,
+      details: isTestGPass
+        ? `Status: ${summaryG.status}, Diff: 100m excess, History: 1 tx preserved. Reason: "${summaryG.reviewReason}"`
+        : `Failed: status=${summaryG.status}, requiresReview=${summaryG.requiresReview}, txs=${summaryG.transactions.length}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case H — Positive Production Correction (Step 58)
+    // Produced: 1,000 MTR, Received: 800 MTR, Correction: +100 MTR
+    // Effective Produced: 1,100 MTR -> Receivable: 300 MTR
+    // -------------------------------------------------------------
+    const draft5H: JobCardDraft = { ...draft5A, id: "jc-draft-5h" };
+    this.clearDailyProductionEntries(draft5H.id);
+    this.clearJobCardReceiveTransactions(draft5H.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5H,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 1000,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5H,
+      order: mockOrder5A,
+      receiveDate: "2026-10-01",
+      receiveQtyMetre: 800,
+      rolls: [{ qtyMetre: 800 }],
+    });
+
+    this.createDailyProductionCorrection({
+      draft: draft5H,
+      order: mockOrder5A,
+      originalEntryId: "entry-5a-h",
+      correctionQtyMetre: 100,
+      reason: "Meter Reading Correction",
+    });
+
+    const summaryH = this.getJobCardReceiveSummary(draft5H, mockOrder5A);
+    const isTestHPass =
+      summaryH.effectiveProducedQtyMetre === 1100 &&
+      summaryH.totalReceivedQtyMetre === 800 &&
+      summaryH.receivableQtyMetre === 300;
+
+    results["Test H (Positive Production Correction: Produced 1100, Received 800 -> Receivable 300)"] = {
+      pass: isTestHPass,
+      details: isTestHPass
+        ? `Effective Produced: ${summaryH.effectiveProducedQtyMetre}m, Received: ${summaryH.totalReceivedQtyMetre}m, Receivable: ${summaryH.receivableQtyMetre}m`
+        : `Failed: produced=${summaryH.effectiveProducedQtyMetre}, receivable=${summaryH.receivableQtyMetre}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case I — Receipt Adjustment Simulation (Step 59)
+    // Saved: 500 MTR, Adjustment: -20 MTR -> Effective: 480 MTR
+    // Historical 500 MTR remains visible
+    // -------------------------------------------------------------
+    const draft5I: JobCardDraft = { ...draft5A, id: "jc-draft-5i" };
+    this.clearDailyProductionEntries(draft5I.id);
+    this.clearJobCardReceiveTransactions(draft5I.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5I,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 1000,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5I,
+      order: mockOrder5A,
+      receiveDate: "2026-10-01",
+      receiveQtyMetre: 500,
+      rolls: [{ qtyMetre: 500 }],
+    });
+
+    const adjI = this.createReceiptAdjustmentSimulation({
+      draft: draft5I,
+      order: mockOrder5A,
+      adjustmentQtyMetre: -20,
+      reason: "Tare re-check deduction",
+      rollsAdjustment: [{ qtyMetre: 20 }],
+    });
+
+    const summaryI = this.getJobCardReceiveSummary(draft5I, mockOrder5A);
+    const isTestIPass =
+      adjI.success &&
+      summaryI.totalReceivedQtyMetre === 480 &&
+      summaryI.transactions.length === 2 &&
+      summaryI.transactions[0]?.qtyMetre === 500 &&
+      summaryI.transactions[1]?.qtyMetre === -20;
+
+    results["Test I (Receipt Adjustment: 500 - 20 = 480 MTR, History Preserved)"] = {
+      pass: isTestIPass,
+      details: isTestIPass
+        ? `Effective Received: ${summaryI.totalReceivedQtyMetre}m, History: Tx1=${summaryI.transactions[0]?.qtyMetre}m, Tx2=${summaryI.transactions[1]?.qtyMetre}m`
+        : `Failed: totalReceived=${summaryI.totalReceivedQtyMetre}, txs=${summaryI.transactions.length}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case J — Uninspected Fabric State (Step 60)
+    // Fabric Roll Draft created -> Inspection: UNINSPECTED, Saleable: NO, Grade A: NO
+    // -------------------------------------------------------------
+    const draft5J: JobCardDraft = { ...draft5A, id: "jc-draft-5j" };
+    this.clearDailyProductionEntries(draft5J.id);
+    this.clearJobCardReceiveTransactions(draft5J.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5J,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 500,
+    });
+
+    const resJ = this.createJobCardReceiveSimulation({
+      draft: draft5J,
+      order: mockOrder5A,
+      receiveDate: "2026-10-01",
+      receiveQtyMetre: 300,
+      rolls: [{ qtyMetre: 150 }, { qtyMetre: 150 }],
+    });
+
+    const rollsJ = resJ.transaction?.rolls ?? [];
+    const isTestJPass =
+      rollsJ.length === 2 &&
+      rollsJ.every(
+        (r) =>
+          r.inspectionStatus === "UNINSPECTED" &&
+          r.stockStatus === "DRAFT_GREY" &&
+          r.isSaleable === false &&
+          r.temporaryRollNo.startsWith("DRAFT-ROLL-")
+      );
+
+    results["Test J (Uninspected Fabric: UNINSPECTED, DRAFT_GREY, Saleable NO, Grade A NO)"] = {
+      pass: isTestJPass,
+      details: isTestJPass
+        ? `Created ${rollsJ.length} rolls: inspectionStatus="${rollsJ[0]?.inspectionStatus}", stockStatus="${rollsJ[0]?.stockStatus}", isSaleable=${rollsJ[0]?.isSaleable}`
+        : `Failed: rolls=${rollsJ.length}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case K — Material Settlement Pending During Full Receive (Step 61)
+    // Produced: 2,000 MTR, Received: 2,000 MTR, Material: PENDING
+    // Fabric Receipt: COMPLETE, Job Card auto-close: NO
+    // -------------------------------------------------------------
+    const draft5K: JobCardDraft = { ...draft5A, id: "jc-draft-5k" };
+    this.clearDailyProductionEntries(draft5K.id);
+    this.clearJobCardReceiveTransactions(draft5K.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5K,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 2000,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5K,
+      order: mockOrder5A,
+      receiveDate: "2026-10-02",
+      receiveQtyMetre: 2000,
+      rolls: [{ qtyMetre: 2000 }],
+    });
+
+    const summaryK = this.getJobCardReceiveSummary(draft5K, mockOrder5A);
+    const isTestKPass =
+      summaryK.isProductionTargetReached === true &&
+      summaryK.isFabricReceiptComplete === true &&
+      summaryK.materialSettlementStatus === "PENDING" &&
+      summaryK.jobCardClosureStatus === "NOT AVAILABLE";
+
+    results["Test K (Material Pending: Fabric Receipt COMPLETE, Job Card Not Closed)"] = {
+      pass: isTestKPass,
+      details: isTestKPass
+        ? `Fabric Receipt Complete: ${summaryK.isFabricReceiptComplete}, Settlement: ${summaryK.materialSettlementStatus}, Closure: ${summaryK.jobCardClosureStatus}`
+        : `Failed: receiptComplete=${summaryK.isFabricReceiptComplete}, settlement=${summaryK.materialSettlementStatus}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case L — Partial Production Fully Received (Step 62)
+    // Planned: 2,000 MTR, Produced: 1,500 MTR, Received: 1,500 MTR
+    // Receive Status: FULLY_RECEIVED, Production: IN_PROGRESS, Job Card: NOT COMPLETE
+    // -------------------------------------------------------------
+    const draft5L: JobCardDraft = { ...draft5A, id: "jc-draft-5l", plannedQtyMetre: 2000 };
+    this.clearDailyProductionEntries(draft5L.id);
+    this.clearJobCardReceiveTransactions(draft5L.id);
+
+    this.createDailyProductionSimulation({
+      draft: draft5L,
+      order: mockOrder5A,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 1500,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draft5L,
+      order: mockOrder5A,
+      receiveDate: "2026-10-02",
+      receiveQtyMetre: 1500,
+      rolls: [{ qtyMetre: 1500 }],
+    });
+
+    const summaryL = this.getJobCardReceiveSummary(draft5L, mockOrder5A);
+    const isTestLPass =
+      summaryL.status === "FULLY_RECEIVED" &&
+      summaryL.isProductionTargetReached === false &&
+      summaryL.isFabricReceiptComplete === false;
+
+    results["Test L (Partial Production Fully Received: FULLY_RECEIVED but Production In Progress)"] = {
+      pass: isTestLPass,
+      details: isTestLPass
+        ? `Receive Status: ${summaryL.status}, Target Reached: ${summaryL.isProductionTargetReached}, Fabric Receipt Complete: ${summaryL.isFabricReceiptComplete}`
+        : `Failed: status=${summaryL.status}, targetReached=${summaryL.isProductionTargetReached}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case M — Production Order Rollup (Step 63)
+    // JC-A: Produced 1,200, Received 1,000
+    // JC-B: Produced 800, Received 700
+    // PO Rollup: Produced 2,000, Received 1,700, Produced Not Received: 300
+    // -------------------------------------------------------------
+    const orderM: ProductionOrder = { ...mockOrder5A, id: "po-test-5a-m", qty_metre: 2500 };
+    const draftMA: JobCardDraft = { ...draft5A, id: "jc-m-a", draftCardNo: "JC-MA", productionOrderId: orderM.id };
+    const draftMB: JobCardDraft = { ...draft5A, id: "jc-m-b", draftCardNo: "JC-MB", productionOrderId: orderM.id };
+
+    this.clearDailyProductionEntries(draftMA.id);
+    this.clearJobCardReceiveTransactions(draftMA.id);
+    this.clearDailyProductionEntries(draftMB.id);
+    this.clearJobCardReceiveTransactions(draftMB.id);
+
+    inMemoryJobCardDrafts.set(orderM.id, [draftMA, draftMB]);
+
+    this.createDailyProductionSimulation({
+      draft: draftMA,
+      order: orderM,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 1200,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draftMA,
+      order: orderM,
+      receiveDate: "2026-10-02",
+      receiveQtyMetre: 1000,
+      rolls: [{ qtyMetre: 1000 }],
+    });
+
+    this.createDailyProductionSimulation({
+      draft: draftMB,
+      order: orderM,
+      productionDate: "2026-10-01",
+      shift: "A",
+      qtyMetre: 800,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draftMB,
+      order: orderM,
+      receiveDate: "2026-10-02",
+      receiveQtyMetre: 700,
+      rolls: [{ qtyMetre: 700 }],
+    });
+
+    const poRollupM = this.getProductionOrderReceiveSummary(orderM);
+    const isTestMPass =
+      poRollupM.producedToDateMetre === 2000 &&
+      poRollupM.totalReceivedMetre === 1700 &&
+      poRollupM.producedNotReceivedMetre === 300 &&
+      poRollupM.rollDraftCount === 2;
+
+    results["Test M (Production Order Rollup: Produced 2000, Received 1700, Not Received 300)"] = {
+      pass: isTestMPass,
+      details: isTestMPass
+        ? `PO Produced: ${poRollupM.producedToDateMetre}m, Received: ${poRollupM.totalReceivedMetre}m, Not Received: ${poRollupM.producedNotReceivedMetre}m, Rolls: ${poRollupM.rollDraftCount}`
+        : `Failed: produced=${poRollupM.producedToDateMetre}, received=${poRollupM.totalReceivedMetre}, notReceived=${poRollupM.producedNotReceivedMetre}`,
+    };
+
+    // Cleanup test artifacts
+    this.clearDailyProductionEntries(draft5A.id);
+    this.clearJobCardReceiveTransactions(draft5A.id);
+    this.clearDailyProductionEntries(draft5B.id);
+    this.clearJobCardReceiveTransactions(draft5B.id);
+    this.clearDailyProductionEntries(draft5C.id);
+    this.clearJobCardReceiveTransactions(draft5C.id);
+    this.clearDailyProductionEntries(draft5G.id);
+    this.clearJobCardReceiveTransactions(draft5G.id);
+    this.clearDailyProductionEntries(draft5H.id);
+    this.clearJobCardReceiveTransactions(draft5H.id);
+    this.clearDailyProductionEntries(draft5I.id);
+    this.clearJobCardReceiveTransactions(draft5I.id);
+    this.clearDailyProductionEntries(draft5J.id);
+    this.clearJobCardReceiveTransactions(draft5J.id);
+    this.clearDailyProductionEntries(draft5K.id);
+    this.clearJobCardReceiveTransactions(draft5K.id);
+    this.clearDailyProductionEntries(draft5L.id);
+    this.clearJobCardReceiveTransactions(draft5L.id);
+    this.clearDailyProductionEntries(draftMA.id);
+    this.clearJobCardReceiveTransactions(draftMA.id);
+    this.clearDailyProductionEntries(draftMB.id);
+    this.clearJobCardReceiveTransactions(draftMB.id);
+    inMemoryJobCardDrafts.delete(orderM.id);
+
+    return results;
   },
 
   // =========================================================================

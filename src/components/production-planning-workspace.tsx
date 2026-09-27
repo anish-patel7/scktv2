@@ -74,6 +74,7 @@ import { MaterialIssuePrepDialog } from "@/components/material-issue-prep-dialog
 import { JobCardMaterialLedgerDialog } from "@/components/job-card-material-ledger-dialog";
 import { DailyProductionDialog } from "@/components/daily-production-dialog";
 import { BulkDailyProductionDialog } from "@/components/bulk-daily-production-dialog";
+import { JobCardReceiveDialog } from "@/components/job-card-receive-dialog";
 import type { ProductionOrder } from "@/lib/production-store";
 import type { SalesOrderItem } from "@/lib/sales-store";
 import type { CostSheetFull } from "@/lib/cost-sheet-store";
@@ -187,7 +188,11 @@ export function ProductionPlanningWorkspace({
   const [isDailyProductionOpen, setIsDailyProductionOpen] = useState(false);
   const [isBulkProductionOpen, setIsBulkProductionOpen] = useState(false);
 
-  // Automated Test Suite Viewer states (Phase 1, 2, 3, 3B, 4A, 4B & 4C)
+  // Phase 5A Job Card Receive & Roll Formation states
+  const [selectedDraftForReceive, setSelectedDraftForReceive] = useState<JobCardDraft | null>(null);
+  const [isJobCardReceiveOpen, setIsJobCardReceiveOpen] = useState(false);
+
+  // Automated Test Suite Viewer states (Phase 1, 2, 3, 3B, 4A, 4B, 4C & 5A)
   const [showTestModal, setShowTestModal] = useState(false);
   const [testResults, setTestResults] = useState<{
     phase1: Record<string, { pass: boolean; details: string }>;
@@ -197,6 +202,7 @@ export function ProductionPlanningWorkspace({
     phase4a?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4b?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4c?: Record<string, { pass: boolean; details: string }> | undefined;
+    phase5a?: Record<string, { pass: boolean; details: string }> | undefined;
   } | null>(null);
 
   // 1. Resolve Linked Sales Order
@@ -311,6 +317,13 @@ export function ProductionPlanningWorkspace({
     return ProductionPlanningService.getProductionOrderProgress(order);
   }, [order, refreshKey]);
 
+  // Phase 5A Production Order Receive Rollup (Step 37)
+  const orderReceiveSummary = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    refreshKey;
+    return ProductionPlanningService.getProductionOrderReceiveSummary(order);
+  }, [order, refreshKey]);
+
   // Split into Warp and Weft lines
   const warpRequirements = materialRequirements.filter((r) => r.sourceType === "WARP");
   const weftRequirements = materialRequirements.filter((r) => r.sourceType === "WEFT");
@@ -365,7 +378,7 @@ export function ProductionPlanningWorkspace({
     setIsAllocationDialogOpen(true);
   };
 
-  // Run Test Suite Runner (Phase 1, Phase 2, Phase 3, Phase 3B, Phase 4A, Phase 4B & Phase 4C)
+  // Run Test Suite Runner (Phase 1, Phase 2, Phase 3, Phase 3B, Phase 4A, Phase 4B, Phase 4C & Phase 5A)
   const handleRunTests = () => {
     const p1 = ProductionPlanningService.runVerificationTests();
     const p2 = ProductionPlanningService.runPhase2VerificationTests();
@@ -374,7 +387,17 @@ export function ProductionPlanningWorkspace({
     const p4a = ProductionPlanningService.runPhase4AVerificationTests();
     const p4b = ProductionPlanningService.runPhase4BVerificationTests();
     const p4c = ProductionPlanningService.runPhase4CVerificationTests();
-    setTestResults({ phase1: p1, phase2: p2, phase3: p3, phase3b: p3b, phase4a: p4a, phase4b: p4b, phase4c: p4c });
+    const p5a = ProductionPlanningService.runPhase5AVerificationTests();
+    setTestResults({
+      phase1: p1,
+      phase2: p2,
+      phase3: p3,
+      phase3b: p3b,
+      phase4a: p4a,
+      phase4b: p4b,
+      phase4c: p4c,
+      phase5a: p5a,
+    });
     setShowTestModal(true);
   };
 
@@ -608,6 +631,20 @@ export function ProductionPlanningWorkspace({
               <span className="text-muted-foreground text-[0.6875rem]">Remaining Qty:</span>
               <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
                 {orderProgress.remainingQtyMetre.toLocaleString()} {order.unit || "MTR"} ({orderProgress.progressPercent}%)
+              </span>
+            </div>
+
+            <div className="flex justify-between items-baseline border-b border-border/50 pb-1.5">
+              <span className="text-muted-foreground text-[0.6875rem]">Received From Loom:</span>
+              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                {orderReceiveSummary.totalReceivedMetre.toLocaleString()} {order.unit || "MTR"} ({orderReceiveSummary.rollDraftCount} rolls)
+              </span>
+            </div>
+
+            <div className="flex justify-between items-baseline border-b border-border/50 pb-1.5">
+              <span className="text-muted-foreground text-[0.6875rem]">Produced Not Received:</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                {orderReceiveSummary.producedNotReceivedMetre.toLocaleString()} {order.unit || "MTR"}
               </span>
             </div>
 
@@ -1628,6 +1665,25 @@ export function ProductionPlanningWorkspace({
                                 >
                                   <Gauge className="size-3" /> Daily Prod
                                 </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    if (targetPlan) {
+                                      const draft = ProductionPlanningService.getJobCardDraftFromLoomPlan(
+                                        targetPlan,
+                                        order
+                                      );
+                                      setSelectedDraftForReceive(draft);
+                                      setIsJobCardReceiveOpen(true);
+                                    }
+                                  }}
+                                  className="h-6 text-[0.625rem] px-2 border-indigo-400 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-medium"
+                                  title="Receive Produced Fabric & Form Rolls (Phase 5A Simulation)"
+                                >
+                                  <PackageCheck className="size-3" /> Receive
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -1773,6 +1829,24 @@ export function ProductionPlanningWorkspace({
                             className="h-6 text-[0.625rem] text-blue-700 font-medium"
                           >
                             <Gauge className="size-3" /> Daily Prod
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (targetPlan) {
+                                const draft = ProductionPlanningService.getJobCardDraftFromLoomPlan(
+                                  targetPlan,
+                                  order
+                                );
+                                setSelectedDraftForReceive(draft);
+                                setIsJobCardReceiveOpen(true);
+                              }
+                            }}
+                            className="h-6 text-[0.625rem] text-indigo-700 dark:text-indigo-300 font-medium"
+                          >
+                            <PackageCheck className="size-3" /> Receive
                           </Button>
                         </div>
                       </div>
@@ -2037,6 +2111,18 @@ export function ProductionPlanningWorkspace({
         onOpenChange={setIsBulkProductionOpen}
         order={order}
         onSaved={() => {
+          setRefreshKey((k) => k + 1);
+          onRefresh?.();
+        }}
+      />
+
+      {/* Phase 5A Job Card Receive & Roll Formation Dialog */}
+      <JobCardReceiveDialog
+        open={isJobCardReceiveOpen}
+        onOpenChange={setIsJobCardReceiveOpen}
+        draft={selectedDraftForReceive}
+        order={order}
+        onUpdated={() => {
           setRefreshKey((k) => k + 1);
           onRefresh?.();
         }}
@@ -2345,6 +2431,7 @@ function TestSuiteResultsDialog({
     phase4a?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4b?: Record<string, { pass: boolean; details: string }> | undefined;
     phase4c?: Record<string, { pass: boolean; details: string }> | undefined;
+    phase5a?: Record<string, { pass: boolean; details: string }> | undefined;
   };
 }) {
   const p1Entries = Object.entries(results.phase1);
@@ -2354,6 +2441,7 @@ function TestSuiteResultsDialog({
   const p4aEntries = results.phase4a ? Object.entries(results.phase4a) : [];
   const p4bEntries = results.phase4b ? Object.entries(results.phase4b) : [];
   const p4cEntries = results.phase4c ? Object.entries(results.phase4c) : [];
+  const p5aEntries = results.phase5a ? Object.entries(results.phase5a) : [];
 
   const allPassed =
     p1Entries.every(([, v]) => v.pass) &&
@@ -2362,7 +2450,8 @@ function TestSuiteResultsDialog({
     p3bEntries.every(([, v]) => v.pass) &&
     p4aEntries.every(([, v]) => v.pass) &&
     p4bEntries.every(([, v]) => v.pass) &&
-    p4cEntries.every(([, v]) => v.pass);
+    p4cEntries.every(([, v]) => v.pass) &&
+    p5aEntries.every(([, v]) => v.pass);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -2562,6 +2651,35 @@ function TestSuiteResultsDialog({
               </h4>
               <div className="space-y-1.5 font-mono text-[0.6875rem]">
                 {p4cEntries.map(([name, r]) => (
+                  <div
+                    key={name}
+                    className={`p-2 rounded border flex items-start justify-between gap-2 ${
+                      r.pass
+                        ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300"
+                        : "border-rose-500/30 bg-rose-500/5 text-rose-800 dark:text-rose-300"
+                    }`}
+                  >
+                    <div>
+                      <strong className="block text-foreground">{name}</strong>
+                      <span className="text-muted-foreground">{r.details}</span>
+                    </div>
+                    <Badge variant={r.pass ? "default" : "destructive"} className="text-[0.5625rem]">
+                      {r.pass ? "PASS" : "FAIL"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Phase 5A Tests */}
+          {p5aEntries.length > 0 && (
+            <div>
+              <h4 className="font-bold text-muted-foreground uppercase text-[0.6875rem] tracking-wider mb-2">
+                Phase 5A Job Card Receive, Fabric Receipt & Roll Formation Tests (Test Cases A through M)
+              </h4>
+              <div className="space-y-1.5 font-mono text-[0.6875rem]">
+                {p5aEntries.map(([name, r]) => (
                   <div
                     key={name}
                     className={`p-2 rounded border flex items-start justify-between gap-2 ${

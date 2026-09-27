@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Power } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
@@ -43,11 +43,13 @@ const STATUS_TONE: Record<LoomStatus, string> = {
   running: "border-primary/60 bg-primary/10",
   idle: "border-border bg-card",
   maintenance: "border-amber-500/60 bg-amber-500/10",
+  inactive: "border-muted bg-muted/20 opacity-70",
 };
 
 function Page() {
   const { data, update } = useProduction();
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [form, setForm] = useState({ loom_no: "", loom_type: "Jacquard", panna_inch: "", remarks: "" });
 
   const addLoom = () => {
@@ -60,6 +62,7 @@ function Page() {
       status: "idle",
       order_id: null,
       remarks: form.remarks.trim(),
+      active: true,
     };
     update((p) => ({ ...p, looms: [...p.looms, loom] }));
     setForm({ loom_no: "", loom_type: "Jacquard", panna_inch: "", remarks: "" });
@@ -76,6 +79,7 @@ function Page() {
               ...l,
               order_id: orderId === "none" ? null : orderId,
               status: orderId === "none" ? (l.status === "maintenance" ? "maintenance" : "idle") : "running",
+              active: true,
             }
           : l,
       ),
@@ -85,9 +89,34 @@ function Page() {
     update((p) => ({
       ...p,
       looms: p.looms.map((l) =>
-        l.id === loomId ? { ...l, status, order_id: status === "running" ? l.order_id : null } : l,
+        l.id === loomId
+          ? {
+              ...l,
+              status,
+              active: status !== "inactive",
+              order_id: status === "running" ? l.order_id : null,
+            }
+          : l,
       ),
     }));
+
+  const toggleActive = (loomId: string) => {
+    update((p) => ({
+      ...p,
+      looms: p.looms.map((l) => {
+        if (l.id !== loomId) return l;
+        const isCurrentlyInactive = l.status === "inactive" || l.active === false;
+        const newStatus: LoomStatus = isCurrentlyInactive ? "idle" : "inactive";
+        toast.success(`Loom ${l.loom_no} ${isCurrentlyInactive ? "activated" : "deactivated"}`);
+        return {
+          ...l,
+          active: isCurrentlyInactive,
+          status: newStatus,
+          order_id: isCurrentlyInactive ? l.order_id : null,
+        };
+      }),
+    }));
+  };
 
   const remove = (loomId: string) =>
     update((p) => ({
@@ -105,6 +134,26 @@ function Page() {
       breadcrumb={[{ label: "Production" }, { label: "Loom Planning" }]}
       actions={
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border border-border bg-card p-0.5 text-xs">
+            <button
+              onClick={() => setFilter("all")}
+              className={cn("px-2 py-0.5 rounded text-[0.6875rem] font-medium transition-colors", filter === "all" ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground hover:text-foreground")}
+            >
+              All ({data.looms.length})
+            </button>
+            <button
+              onClick={() => setFilter("active")}
+              className={cn("px-2 py-0.5 rounded text-[0.6875rem] font-medium transition-colors", filter === "active" ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground hover:text-foreground")}
+            >
+              Active ({data.looms.filter((l) => l.status !== "inactive" && l.active !== false).length})
+            </button>
+            <button
+              onClick={() => setFilter("inactive")}
+              className={cn("px-2 py-0.5 rounded text-[0.6875rem] font-medium transition-colors", filter === "inactive" ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground hover:text-foreground")}
+            >
+              Inactive ({data.looms.filter((l) => l.status === "inactive" || l.active === false).length})
+            </button>
+          </div>
           <Badge variant="outline" className="text-[0.6875rem]">
             Utilisation {utilisation}% · {running}/{data.looms.length} running
           </Badge>
@@ -163,69 +212,103 @@ function Page() {
       }
     >
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {data.looms.map((l) => {
-          const order = data.orders.find((o) => o.id === l.order_id);
-          const done = order ? producedForOrder(data, order.id) : 0;
-          return (
-            <Card key={l.id} className={cn("gap-2 rounded-sm border py-3", STATUS_TONE[l.status])}>
-              <CardHeader className="flex flex-row items-center justify-between px-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <span className="font-mono font-bold">{l.loom_no}</span>
-                  <span className="text-[0.6875rem] font-normal text-muted-foreground">
-                    {l.loom_type} · {l.panna_inch}"
-                  </span>
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 text-muted-foreground hover:text-destructive"
-                  onClick={() => remove(l.id)}
-                  title="Remove loom"
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-2 px-3 text-xs">
-                <div className="space-y-1">
-                  <Label className="section-label text-[0.6875rem]">Allocated order</Label>
-                  <Select value={l.order_id ?? "none"} onValueChange={(v) => allocate(l.id, v)}>
-                    <SelectTrigger className="h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none" className="text-xs">
-                        Unallocated
-                      </SelectItem>
-                      {data.orders.map((o) => (
-                        <SelectItem key={o.id} value={o.id} className="text-xs">
-                          {o.order_no} · {o.design_no}
+        {data.looms
+          .filter((l) => {
+            const isInactive = l.status === "inactive" || l.active === false;
+            if (filter === "active") return !isInactive;
+            if (filter === "inactive") return isInactive;
+            return true;
+          })
+          .map((l) => {
+            const order = data.orders.find((o) => o.id === l.order_id);
+            const done = order ? producedForOrder(data, order.id) : 0;
+            const isInactive = l.status === "inactive" || l.active === false;
+            return (
+              <Card key={l.id} className={cn("gap-2 rounded-sm border py-3", STATUS_TONE[l.status])}>
+                <CardHeader className="flex flex-row items-center justify-between px-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <span className="font-mono font-bold">{l.loom_no}</span>
+                    <span className="text-[0.6875rem] font-normal text-muted-foreground">
+                      {l.loom_type} · {l.panna_inch}"
+                    </span>
+                    <Badge
+                      variant={isInactive ? "secondary" : "default"}
+                      className={`text-[0.5625rem] h-4 py-0 ${
+                        isInactive ? "bg-muted text-muted-foreground" : "bg-emerald-600 text-white"
+                      }`}
+                    >
+                      {isInactive ? "Inactive" : "Active"}
+                    </Badge>
+                  </CardTitle>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "size-6",
+                        isInactive ? "text-muted-foreground hover:text-emerald-600" : "text-emerald-600 hover:text-amber-600"
+                      )}
+                      onClick={() => toggleActive(l.id)}
+                      title={isInactive ? "Activate Loom" : "Deactivate Loom"}
+                    >
+                      <Power className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 text-muted-foreground hover:text-destructive"
+                      onClick={() => remove(l.id)}
+                      title="Remove loom"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 px-3 text-xs">
+                  <div className="space-y-1">
+                    <Label className="section-label text-[0.6875rem]">Allocated order</Label>
+                    <Select
+                      disabled={isInactive}
+                      value={l.order_id ?? "none"}
+                      onValueChange={(v) => allocate(l.id, v)}
+                    >
+                      <SelectTrigger className="h-7 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-xs">
+                          Unallocated
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="section-label text-[0.6875rem]">Status</Label>
-                  <Select value={l.status} onValueChange={(v) => setStatus(l.id, v as LoomStatus)}>
-                    <SelectTrigger className="h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(["idle", "running", "maintenance"] as LoomStatus[]).map((s) => (
-                        <SelectItem key={s} value={s} className="text-xs capitalize">
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <p className="text-[0.6875rem] text-muted-foreground">
-                  {order ? `${order.party_name} · ${done}/${order.qty_metre} m woven` : l.remarks || "No allocation"}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
+                        {data.orders.map((o) => (
+                          <SelectItem key={o.id} value={o.id} className="text-xs">
+                            {o.order_no} · {o.design_no}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="section-label text-[0.6875rem]">Status</Label>
+                    <Select value={l.status} onValueChange={(v) => setStatus(l.id, v as LoomStatus)}>
+                      <SelectTrigger className="h-7 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["idle", "running", "maintenance", "inactive"] as LoomStatus[]).map((s) => (
+                          <SelectItem key={s} value={s} className="text-xs capitalize">
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-[0.6875rem] text-muted-foreground">
+                    {order ? `${order.party_name} · ${done}/${order.qty_metre} m woven` : l.remarks || "No allocation"}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         {!data.looms.length && (
           <p className="text-xs text-muted-foreground">No looms configured yet — add your first loom.</p>
         )}

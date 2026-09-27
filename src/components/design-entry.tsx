@@ -9,12 +9,13 @@ import {
   RotateCcw,
   Sparkles,
   Layers,
+  ChevronsUpDown,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,9 +35,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import type { DesignWithDetails, BeamColour, Feeder } from "@/types/design";
 import { saveDesign, saveDraft, clearDraft } from "@/lib/design-store";
 import { getLocalYarnMaterials } from "@/lib/material-store";
+import { getLocalWorkTypes, type WorkTypeRecord } from "@/lib/work-type-store";
 
 interface DesignEntryProps {
   initialDesign?: DesignWithDetails | null | undefined;
@@ -45,15 +61,77 @@ interface DesignEntryProps {
   onSaveSuccess: (saved: DesignWithDetails) => void;
 }
 
-const WORK_TYPES = [
-  "Jacquard Pashmina",
-  "Brocade Work",
-  "Floral Motif",
-  "Embroidery & Jacquard",
-  "Dobhy Weave",
-  "Plain Grey",
-  "Zari Border",
-];
+function SearchableWorkTypeSelect({
+  value,
+  onChange,
+  workTypes,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  workTypes: WorkTypeRecord[];
+}) {
+  const [open, setOpen] = useState(false);
+
+  const activeWorkTypes = useMemo(
+    () => workTypes.filter((w) => w.active),
+    [workTypes]
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id="work"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal text-xs h-9 bg-background px-3 hover:bg-background"
+        >
+          <span className="truncate font-medium text-foreground">
+            {value ? value : "Select work type..."}
+          </span>
+          <ChevronsUpDown className="ml-2 size-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0 shadow-lg" align="start">
+        <Command>
+          <CommandInput placeholder="Search work type (e.g. Jacquard, Dobby)..." className="h-8 text-xs" />
+          <CommandList className="max-h-56">
+            <CommandEmpty className="p-3 text-xs text-muted-foreground text-center">
+              No matching work type found.
+            </CommandEmpty>
+            <CommandGroup heading="Available Work Types">
+              {activeWorkTypes.map((wt) => (
+                <CommandItem
+                  key={wt.id}
+                  value={`${wt.name} ${wt.code}`}
+                  onSelect={() => {
+                    onChange(wt.name);
+                    setOpen(false);
+                  }}
+                  className="text-xs flex items-center justify-between cursor-pointer py-1.5"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[0.6875rem] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded">
+                      {wt.code}
+                    </span>
+                    <span className="font-medium">{wt.name}</span>
+                  </div>
+                  <Check
+                    className={cn(
+                      "size-3.5 text-primary",
+                      value === wt.name ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export interface BeamColourColumn {
   id: string;
@@ -83,17 +161,28 @@ export function DesignEntry({
   const [designName, setDesignName] = useState(
     initialDesign ? (isClone ? `${initialDesign.designName} (Copy)` : initialDesign.designName) : ""
   );
-  const [dn, setDn] = useState(initialDesign?.dn || "");
   const [dnCode, setDnCode] = useState(initialDesign?.dnCode || "");
   const [reed, setReed] = useState<string>(initialDesign?.reed !== undefined ? String(initialDesign.reed) : "");
-  const [patti, setPatti] = useState<string>(initialDesign?.patti !== undefined ? String(initialDesign.patti) : "");
-  const [totalDC, setTotalDC] = useState<string>(initialDesign?.totalDC !== undefined ? String(initialDesign.totalDC) : "");
+  const [workTypes, setWorkTypes] = useState<WorkTypeRecord[]>(() => getLocalWorkTypes());
   const [totalCut, setTotalCut] = useState<string>(initialDesign?.totalCut !== undefined ? String(initialDesign.totalCut) : "");
-  const [work, setWork] = useState(initialDesign?.work || "Jacquard Pashmina");
-  const [blueApt, setBlueApt] = useState(initialDesign?.blueApt || "");
-  const [description, setDescription] = useState(initialDesign?.description || "");
+  const [work, setWork] = useState(
+    initialDesign?.work || (getLocalWorkTypes().find((w) => w.active)?.name || "Jacquard Pashmina")
+  );
+  const [primaryUnit, setPrimaryUnit] = useState(initialDesign?.primaryUnit || "MTR");
   const [remarks, setRemarks] = useState(initialDesign?.remarks || "");
   const [image, setImage] = useState(initialDesign?.image || "");
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setWorkTypes(getLocalWorkTypes());
+    };
+    window.addEventListener("work_types_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("work_types_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   // 2. Feeder × Beam Colour Matrix State
   const [beamColourColumns, setBeamColourColumns] = useState<BeamColourColumn[]>(() => {
@@ -175,15 +264,11 @@ export function DesignEntry({
     const draftData: Partial<DesignWithDetails> = {
       designNumber,
       designName,
-      dn: dn || undefined,
       dnCode: dnCode || undefined,
       reed: reed ? Number(reed) : undefined,
-      patti: patti ? Number(patti) : undefined,
-      totalDC: totalDC ? Number(totalDC) : undefined,
       totalCut: totalCut ? Number(totalCut) : undefined,
       work: work || undefined,
-      blueApt: blueApt || undefined,
-      description: description || undefined,
+      primaryUnit: primaryUnit || undefined,
       remarks: remarks || undefined,
       image: image || undefined,
     };
@@ -196,15 +281,11 @@ export function DesignEntry({
   }, [
     designNumber,
     designName,
-    dn,
     dnCode,
     reed,
-    patti,
-    totalDC,
     totalCut,
     work,
-    blueApt,
-    description,
+    primaryUnit,
     remarks,
     image,
   ]);
@@ -402,15 +483,11 @@ export function DesignEntry({
         id: isClone ? undefined : initialDesign?.id,
         designNumber: designNumber.trim(),
         designName: designName.trim(),
-        dn: dn.trim() || undefined,
         dnCode: dnCode.trim() || undefined,
         reed: reed ? Number(reed) : undefined,
-        patti: patti ? Number(patti) : undefined,
-        totalDC: totalDC ? Number(totalDC) : undefined,
         totalCut: totalCut ? Number(totalCut) : undefined,
         work: work || undefined,
-        blueApt: blueApt.trim() || undefined,
-        description: description.trim() || undefined,
+        primaryUnit: primaryUnit.trim() || undefined,
         remarks: remarks.trim() || undefined,
         image: image || undefined,
         beamColours: beamColoursPayload,
@@ -469,8 +546,8 @@ export function DesignEntry({
           <CardTitle className="text-base font-semibold">Design Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Row 1: Number, Name, Work Type */}
-          <div className="grid gap-4 md:grid-cols-3">
+          {/* Row 1: Number, Name, Work Type, Primary Unit */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="designNumber">
                 Design Number <span className="text-destructive">*</span>
@@ -498,17 +575,37 @@ export function DesignEntry({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="work">Work Type</Label>
-              <Select value={work} onValueChange={setWork}>
-                <SelectTrigger id="work">
-                  <SelectValue placeholder="Select work type" />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="work">Work Type</Label>
+                <Link
+                  to="/masters/$type"
+                  params={{ type: "work_type" }}
+                  target="_blank"
+                  className="text-[0.6875rem] text-primary hover:underline font-normal"
+                >
+                  Manage Masters ↗
+                </Link>
+              </div>
+              <SearchableWorkTypeSelect
+                value={work}
+                onChange={setWork}
+                workTypes={workTypes}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="primaryUnit">Primary Unit</Label>
+              <Select value={primaryUnit} onValueChange={setPrimaryUnit}>
+                <SelectTrigger id="primaryUnit" className="h-9 text-xs">
+                  <SelectValue placeholder="Select primary unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {WORK_TYPES.map((w) => (
-                    <SelectItem key={w} value={w}>
-                      {w}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="MTR">MTR (Metres)</SelectItem>
+                  <SelectItem value="PCS">PCS (Pieces)</SelectItem>
+                  <SelectItem value="TAKAS">TAKAS (Takas / Rolls)</SelectItem>
+                  <SelectItem value="SAREE">SAREE (Sarees)</SelectItem>
+                  <SelectItem value="YDS">YDS (Yards)</SelectItem>
+                  <SelectItem value="KG">KG (Kilograms)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -590,13 +687,8 @@ export function DesignEntry({
             </div>
           </div>
 
-          {/* Technical Specs Rows (Reed, Patti, Total DC, Total Cut) */}
+          {/* Technical Specs & Details (DN Code, Reed, Total Cut, Remarks) */}
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="dn">DN Number</Label>
-              <Input id="dn" placeholder="e.g. DN-440" value={dn} onChange={(e) => setDn(e.target.value)} className="font-mono text-xs" />
-            </div>
-
             <div className="space-y-1.5">
               <Label htmlFor="dnCode">DN Code</Label>
               <Input id="dnCode" placeholder="e.g. DN-440-KASH" value={dnCode} onChange={(e) => setDnCode(e.target.value)} className="font-mono text-xs" />
@@ -608,43 +700,14 @@ export function DesignEntry({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="patti">Patti</Label>
-              <Input id="patti" type="number" placeholder="12" value={patti} onChange={(e) => setPatti(e.target.value)} className="font-mono text-xs" />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="totalDC">Total D.C.</Label>
-              <Input id="totalDC" type="number" placeholder="14400" value={totalDC} onChange={(e) => setTotalDC(e.target.value)} className="font-mono text-xs" />
-            </div>
-
-            <div className="space-y-1.5">
               <Label htmlFor="totalCut">Total Cut</Label>
               <Input id="totalCut" type="number" placeholder="4" value={totalCut} onChange={(e) => setTotalCut(e.target.value)} className="font-mono text-xs" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="blueApt">Blue + APT</Label>
-              <Input id="blueApt" placeholder="e.g. Blue-99 / APT-A" value={blueApt} onChange={(e) => setBlueApt(e.target.value)} className="text-xs" />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="remarks">Remarks</Label>
               <Input id="remarks" placeholder="Special instructions..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="text-xs" />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              rows={2}
-              placeholder="Comprehensive description of design construction..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="text-xs"
-            />
           </div>
         </CardContent>
       </Card>

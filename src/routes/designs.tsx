@@ -49,6 +49,7 @@ import {
   getDesignById,
 } from "@/lib/design-store";
 import { DesignEntry } from "@/components/design-entry";
+import { getLocalWorkTypes, type WorkTypeRecord } from "@/lib/work-type-store";
 
 export const Route = createFileRoute("/designs")({
   head: () => ({
@@ -79,6 +80,7 @@ function DesignsPage() {
   const [isCloneMode, setIsCloneMode] = useState(false);
 
   // Search & Filter State
+  const [workTypes, setWorkTypes] = useState<WorkTypeRecord[]>(() => getLocalWorkTypes());
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [workFilter, setWorkFilter] = useState("all");
@@ -86,6 +88,16 @@ function DesignsPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const pageSize = 8;
+
+  useEffect(() => {
+    const handleUpdate = () => setWorkTypes(getLocalWorkTypes());
+    window.addEventListener("work_types_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("work_types_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   // Modals state
   const [viewModalDesign, setViewModalDesign] = useState<DesignWithDetails | null>(null);
@@ -232,10 +244,13 @@ function DesignsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Work Types</SelectItem>
-                <SelectItem value="Jacquard Pashmina">Jacquard Pashmina</SelectItem>
-                <SelectItem value="Brocade Work">Brocade Work</SelectItem>
-                <SelectItem value="Floral Motif">Floral Motif</SelectItem>
-                <SelectItem value="Embroidery & Jacquard">Embroidery & Jacquard</SelectItem>
+                {workTypes
+                  .filter((w) => w.active)
+                  .map((w) => (
+                    <SelectItem key={w.id} value={w.name}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -319,13 +334,18 @@ function DesignsPage() {
                         {design.designNumber}
                       </Badge>
                     </div>
-                    {design.work && (
-                      <div className="absolute right-2 top-2">
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                      {design.primaryUnit && (
+                        <Badge variant="outline" className="text-[0.625rem] bg-background/90 backdrop-blur-xs font-mono font-semibold">
+                          {design.primaryUnit}
+                        </Badge>
+                      )}
+                      {design.work && (
                         <Badge variant="secondary" className="text-[0.625rem]">
                           {design.work}
                         </Badge>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {/* Card Content Body */}
@@ -334,9 +354,9 @@ function DesignsPage() {
                       <h3 className="font-semibold tracking-tight text-foreground line-clamp-1">
                         {design.designName}
                       </h3>
-                      {design.dn && (
+                      {design.dnCode && (
                         <p className="text-[0.6875rem] text-muted-foreground font-mono">
-                          {design.dn} {design.dnCode ? `· ${design.dnCode}` : ""}
+                          {design.dnCode}
                         </p>
                       )}
                     </div>
@@ -410,11 +430,12 @@ function DesignsPage() {
                 <TableRow className="bg-muted/50 text-xs">
                   <TableHead className="font-semibold">Design Number</TableHead>
                   <TableHead className="font-semibold">Design Name</TableHead>
-                  <TableHead className="font-semibold">DN</TableHead>
+                  <TableHead className="font-semibold">DN Code</TableHead>
                   <TableHead className="font-semibold">Reed</TableHead>
                   <TableHead className="font-semibold">Pick</TableHead>
                   <TableHead className="font-semibold">Cards</TableHead>
                   <TableHead className="font-semibold">Work</TableHead>
+                  <TableHead className="font-semibold">Unit</TableHead>
                   <TableHead className="font-semibold">Beam Colours</TableHead>
                   <TableHead className="font-semibold">Feeders</TableHead>
                   <TableHead className="font-semibold">Updated</TableHead>
@@ -445,12 +466,13 @@ function DesignsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-muted-foreground">
-                        {design.dn || "—"}
+                        {design.dnCode || "—"}
                       </TableCell>
                       <TableCell className="font-mono">{design.reed ?? "—"}</TableCell>
                       <TableCell className="font-mono">{design.pick ?? "—"}</TableCell>
                       <TableCell className="font-mono">{design.cards ?? "—"}</TableCell>
                       <TableCell>{design.work || "—"}</TableCell>
+                      <TableCell className="font-mono font-medium text-foreground">{design.primaryUnit || "MTR"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[0.6875rem]">
                           {design.beamColours.length} Colours
@@ -580,8 +602,12 @@ function DesignsPage() {
               {/* Specifications Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-lg bg-muted/40 p-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground block">DN</span>
-                  <span className="font-mono font-medium">{viewModalDesign.dn || "—"}</span>
+                  <span className="text-muted-foreground block">DN Code</span>
+                  <span className="font-mono font-medium">{viewModalDesign.dnCode || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Primary Unit</span>
+                  <span className="font-mono font-medium font-semibold text-primary">{viewModalDesign.primaryUnit || "MTR"}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block">Reed</span>
@@ -596,28 +622,20 @@ function DesignsPage() {
                   <span className="font-mono font-medium">{viewModalDesign.cards ?? "—"}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block">Patti</span>
-                  <span className="font-mono font-medium">{viewModalDesign.patti ?? "—"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block">Total D.C.</span>
-                  <span className="font-mono font-medium">{viewModalDesign.totalDC ?? "—"}</span>
-                </div>
-                <div>
                   <span className="text-muted-foreground block">Total Cut</span>
                   <span className="font-mono font-medium">{viewModalDesign.totalCut ?? "—"}</span>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-muted-foreground block">Work</span>
                   <span className="font-medium">{viewModalDesign.work || "—"}</span>
                 </div>
               </div>
 
-              {/* Description / Remarks */}
-              {viewModalDesign.description && (
+              {/* Remarks */}
+              {viewModalDesign.remarks && (
                 <div className="text-xs">
-                  <span className="font-semibold text-foreground">Description:</span>
-                  <p className="mt-0.5 text-muted-foreground">{viewModalDesign.description}</p>
+                  <span className="font-semibold text-foreground">Remarks:</span>
+                  <p className="mt-0.5 text-muted-foreground">{viewModalDesign.remarks}</p>
                 </div>
               )}
 

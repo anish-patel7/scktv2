@@ -59,6 +59,7 @@ import {
   deleteWarehouseRecord,
   getLocationsByWarehouseId,
   saveWarehouseLocationRecord,
+  deleteWarehouseLocationRecord,
   WAREHOUSE_TYPES,
   type WarehouseRecord,
   type WarehouseType,
@@ -121,6 +122,7 @@ export function WarehouseMasterView() {
   const [newLocName, setNewLocName] = useState("");
   const [newLocDesc, setNewLocDesc] = useState("");
   const [editingLocId, setEditingLocId] = useState<string | null>(null);
+  const [deletingLocation, setDeletingLocation] = useState<WarehouseLocationRecord | null>(null);
 
   // Refresh list helper
   const refreshWarehouses = () => {
@@ -323,6 +325,19 @@ export function WarehouseMasterView() {
     setEditingLocId(null);
     setWhLocations(getLocationsByWarehouseId(locationsWh.id));
     refreshWarehouses();
+  };
+
+  const handleDeleteLocation = (loc: WarehouseLocationRecord) => {
+    if (!locationsWh) return;
+    const res = deleteWarehouseLocationRecord(loc.id);
+    if (res.success) {
+      toast.success(res.message);
+      setWhLocations(getLocationsByWarehouseId(locationsWh.id));
+      refreshWarehouses();
+    } else {
+      toast.error(res.message);
+    }
+    setDeletingLocation(null);
   };
 
   // Sort Toggle Handler
@@ -871,7 +886,7 @@ export function WarehouseMasterView() {
                   <Label className="text-xs font-medium">Email Address</Label>
                   <Input
                     type="email"
-                    placeholder="e.g. warehouse@weaveone.com"
+                    placeholder="e.g. warehouse@sckt.com"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     className="h-8 text-xs"
@@ -1023,9 +1038,9 @@ export function WarehouseMasterView() {
                     <TableRow className="bg-muted/50 text-xs">
                       <TableHead className="font-semibold">Location Code</TableHead>
                       <TableHead className="font-semibold">Location Name</TableHead>
-                      <TableHead className="font-semibold">Description</TableHead>
+                      <TableHead className="font-semibold">Description / Remark</TableHead>
                       <TableHead className="text-center font-semibold">Status</TableHead>
-                      <TableHead className="text-right font-semibold">Action</TableHead>
+                      <TableHead className="text-right font-semibold w-28">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -1046,18 +1061,30 @@ export function WarehouseMasterView() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-6 text-muted-foreground hover:text-primary"
-                            onClick={() => {
-                              setEditingLocId(loc.id);
-                              setNewLocName(loc.locationName);
-                              setNewLocDesc(loc.description || "");
-                            }}
-                          >
-                            <Edit className="size-3" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 text-muted-foreground hover:text-primary"
+                              title="Edit Sub-Location"
+                              onClick={() => {
+                                setEditingLocId(loc.id);
+                                setNewLocName(loc.locationName);
+                                setNewLocDesc(loc.description || "");
+                              }}
+                            >
+                              <Edit className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 text-muted-foreground hover:text-destructive"
+                              title="Delete Sub-Location"
+                              onClick={() => setDeletingLocation(loc)}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1076,6 +1103,34 @@ export function WarehouseMasterView() {
           </DialogContent>
         )}
       </Dialog>
+
+      {/* Confirmation Dialog for Sub-Location Delete */}
+      <AlertDialog open={Boolean(deletingLocation)} onOpenChange={(open) => !open && setDeletingLocation(null)}>
+        {deletingLocation && (
+          <AlertDialogContent className="max-w-md p-6 text-xs">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm font-bold text-destructive flex items-center gap-2">
+                <AlertTriangle className="size-4" />
+                Delete Sub-Location {deletingLocation.locationCode}?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground pt-1">
+                Are you sure you want to permanently delete Sub-Location{" "}
+                <strong>{deletingLocation.locationCode} — {deletingLocation.locationName}</strong>?
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 pt-3 border-t border-border mt-3">
+              <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => handleDeleteLocation(deletingLocation)}
+              >
+                Delete Sub-Location
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
 
       {/* Confirmation Dialog for Status Toggle (Deactivate / Activate) */}
       <AlertDialog

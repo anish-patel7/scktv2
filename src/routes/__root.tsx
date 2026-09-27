@@ -40,6 +40,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
   const handleResetDemo = () => {
     if (typeof window !== "undefined") {
+      localStorage.setItem("sckt_demo_user", "true");
       localStorage.setItem("weaveone_demo_user", "true");
       window.location.href = "/";
     }

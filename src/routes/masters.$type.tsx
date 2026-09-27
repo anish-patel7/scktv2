@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Search, Edit, Trash2, Power, Layers } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Power, Layers, AlertTriangle, ListTree, Check } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { MASTER_TYPES } from "@/lib/nav";
@@ -19,22 +19,42 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmt } from "@/lib/costing";
 import { getLocalYarnMaterials, type YarnMaterial } from "@/lib/material-store";
 import { PartyMasterView } from "@/components/party-master-view";
 import { YarnMasterView } from "@/components/yarn-master-view";
 import { WarehouseMasterView } from "@/components/warehouse-master-view";
+import { ItemMasterView } from "@/components/item-master-view";
+import { getLocalWorkTypes, saveLocalWorkTypes, SEED_WORK_TYPES } from "@/lib/work-type-store";
+import { cn } from "@/lib/utils";
 
 interface GenericMasterItem {
   id: string;
   code: string;
   name: string;
-  description?: string;
-  composition?: string;
-  denier?: number;
-  rate_per_kg?: number;
+  description?: string | undefined;
+  composition?: string | undefined;
+  denier?: number | undefined;
+  rate_per_kg?: number | undefined;
   active: boolean;
+}
+
+interface SubMasterEntry {
+  id: string;
+  code: string;
+  name: string;
+  remark?: string | undefined;
 }
 
 // Fallback seed data for generic master types
@@ -77,6 +97,13 @@ const SEED_GENERIC_MASTERS: Record<string, GenericMasterItem[]> = {
     { id: "prc-2", code: "PRC-02", name: "Ready for Dyeing (RFD) Finish", description: "Standard Rate ₹0.00 / cut", active: true },
     { id: "prc-3", code: "PRC-03", name: "Soft Wash & Calendar Finish", description: "Standard Rate ₹1.50 / metre", active: true },
   ],
+  work_type: SEED_WORK_TYPES.map((w) => ({
+    id: w.id,
+    code: w.code,
+    name: w.name,
+    description: w.description,
+    active: w.active,
+  })),
 };
 
 export const Route = createFileRoute("/masters/$type")({
@@ -111,6 +138,11 @@ function MasterPage() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GenericMasterItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<GenericMasterItem | null>(null);
+
+  // Local state storage for modified generic records
+  const [localRecords, setLocalRecords] = useState<Record<string, GenericMasterItem[]>>({});
+
   const [form, setForm] = useState({
     code: "",
     name: "",
@@ -121,7 +153,7 @@ function MasterPage() {
   });
 
   // Query master records with local fallback
-  const { data: dbData = [] } = useQuery({
+  const { data: dbFetched = [] } = useQuery({
     queryKey: ["master", type],
     enabled: !isParty,
     queryFn: async () => {
@@ -129,16 +161,25 @@ function MasterPage() {
         if (isMaterial) {
           const { data, error } = await supabase.from("materials").select("*").order("code");
           if (!error && data && data.length > 0) return data;
-          // Fallback to local yarn materials
           const localYarns = getLocalYarnMaterials();
           return localYarns.map((m) => ({
             id: m.id,
             code: m.code,
             name: m.name,
-            composition: m.composition || "Yarn",
+            composition: m.composition || undefined,
             denier: m.denier,
             rate_per_kg: m.ratePerKg,
             active: m.active,
+          }));
+        }
+
+        if (type === "work_type") {
+          return getLocalWorkTypes().map((w) => ({
+            id: w.id,
+            code: w.code,
+            name: w.name,
+            description: w.description,
+            active: w.active,
           }));
         }
 
@@ -156,10 +197,19 @@ function MasterPage() {
             id: m.id,
             code: m.code,
             name: m.name,
-            composition: m.composition || "Yarn",
+            composition: m.composition || undefined,
             denier: m.denier,
             rate_per_kg: m.ratePerKg,
             active: m.active,
+          }));
+        }
+        if (type === "work_type") {
+          return getLocalWorkTypes().map((w) => ({
+            id: w.id,
+            code: w.code,
+            name: w.name,
+            description: w.description,
+            active: w.active,
           }));
         }
         return SEED_GENERIC_MASTERS[type] || [];
@@ -167,18 +217,33 @@ function MasterPage() {
     },
   });
 
+  // Combined records list
+  const activeRecords = useMemo<GenericMasterItem[]>(() => {
+    if (localRecords[type]) return localRecords[type];
+    return dbFetched.map((r: any) => ({
+      id: String(r.id),
+      code: String(r.code || ""),
+      name: String(r.name || ""),
+      description: r.description ? String(r.description) : undefined,
+      composition: r.composition ? String(r.composition) : undefined,
+      denier: r.denier ? Number(r.denier) : undefined,
+      rate_per_kg: r.rate_per_kg ? Number(r.rate_per_kg) : undefined,
+      active: r.active !== false,
+    }));
+  }, [localRecords, type, dbFetched]);
+
   // Filtered rows
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return dbData;
+    if (!q) return activeRecords;
 
-    return dbData.filter((r: any) => {
+    return activeRecords.filter((r: any) => {
       const code = String(r.code || "").toLowerCase();
       const name = String(r.name || "").toLowerCase();
       const desc = String(r.description || r.composition || "").toLowerCase();
       return code.includes(q) || name.includes(q) || desc.includes(q);
     });
-  }, [dbData, search]);
+  }, [activeRecords, search]);
 
   if (isWarehouse) {
     return (
@@ -206,12 +271,23 @@ function MasterPage() {
     return <YarnMasterView />;
   }
 
+  if (type === "item") {
+    return (
+      <AppShell
+        title="Item Master"
+        breadcrumb={[{ label: "Masters" }, { label: "Item" }]}
+      >
+        <ItemMasterView />
+      </AppShell>
+    );
+  }
+
   const handleOpenCreate = () => {
     setEditingItem(null);
-    const prefix = type === "beam_colour" ? "BYM" : type.slice(0, 3).toUpperCase();
-    const padLen = type === "beam_colour" || type === "loom" || type === "process" ? 2 : 3;
+    const prefix = type === "beam_colour" ? "BYM" : type === "work_type" ? "WT" : type.slice(0, 3).toUpperCase();
+    const padLen = type === "beam_colour" || type === "loom" || type === "process" || type === "work_type" ? 2 : 3;
     setForm({
-      code: `${prefix}-${String(dbData.length + 1).padStart(padLen, "0")}`,
+      code: `${prefix}-${String(activeRecords.length + 1).padStart(padLen, "0")}`,
       name: "",
       description: "",
       denier: "",
@@ -221,34 +297,155 @@ function MasterPage() {
     setOpen(true);
   };
 
-  const create = async () => {
+  const handleOpenEdit = (item: GenericMasterItem) => {
+    setEditingItem(item);
+    setForm({
+      code: item.code,
+      name: item.name,
+      description: item.description || "",
+      denier: item.denier ? String(item.denier) : "",
+      composition: item.composition || "",
+      rate_per_kg: item.rate_per_kg ? String(item.rate_per_kg) : "",
+    });
+    setOpen(true);
+  };
+
+  const saveRecord = async () => {
     if (!form.code.trim() || !form.name.trim()) {
       toast.error("Code and name are required");
       return;
     }
-    const res = isMaterial
-      ? await supabase.from("materials").insert({
+
+    if (editingItem) {
+      // Update existing record
+      if (!isMaterial) {
+        await supabase.from("masters").update({
           code: form.code,
           name: form.name,
-          composition: form.composition || null,
-          denier: form.denier ? Number(form.denier) : null,
-          rate_per_kg: Number(form.rate_per_kg || 0),
-        })
-      : await supabase.from("masters").insert({
+          description: form.description || null,
+        }).eq("id", editingItem.id);
+      }
+
+      setLocalRecords((prev) => {
+        const list = prev[type] || activeRecords;
+        const updated = list.map((item) =>
+          item.id === editingItem.id
+            ? {
+                ...item,
+                code: form.code,
+                name: form.name,
+                description: form.description || undefined,
+                composition: form.composition || undefined,
+                denier: form.denier ? Number(form.denier) : undefined,
+                rate_per_kg: form.rate_per_kg ? Number(form.rate_per_kg) : undefined,
+              }
+            : item
+        );
+        if (type === "work_type") {
+          saveLocalWorkTypes(
+            updated.map((u) => ({
+              id: u.id,
+              code: u.code,
+              name: u.name,
+              description: u.description,
+              active: u.active,
+            }))
+          );
+        }
+        return { ...prev, [type]: updated };
+      });
+      toast.success(`Record ${form.code} updated successfully`);
+    } else {
+      // Create new record
+      const newId = `${type}-${Date.now()}`;
+      const newItem: GenericMasterItem = {
+        id: newId,
+        code: form.code,
+        name: form.name,
+        description: form.description || undefined,
+        composition: form.composition || undefined,
+        denier: form.denier ? Number(form.denier) : undefined,
+        rate_per_kg: form.rate_per_kg ? Number(form.rate_per_kg) : undefined,
+        active: true,
+      };
+
+      if (!isMaterial) {
+        await supabase.from("masters").insert({
           master_type: type,
           code: form.code,
           name: form.name,
           description: form.description || null,
         });
+      }
 
-    if (res.error) {
-      toast.error(res.error.message || "Saved locally");
-    } else {
-      toast.success("Record added to database");
+      setLocalRecords((prev) => {
+        const list = prev[type] || activeRecords;
+        const nextList = [newItem, ...list];
+        if (type === "work_type") {
+          saveLocalWorkTypes(
+            nextList.map((u) => ({
+              id: u.id,
+              code: u.code,
+              name: u.name,
+              description: u.description,
+              active: u.active,
+            }))
+          );
+        }
+        return { ...prev, [type]: nextList };
+      });
+      toast.success(`New ${meta?.label ?? type} record added`);
     }
 
     setOpen(false);
+    setEditingItem(null);
     qc.invalidateQueries({ queryKey: ["master", type] });
+  };
+
+  const handleDeleteRecord = async (item: GenericMasterItem) => {
+    if (!isMaterial) {
+      await supabase.from("masters").delete().eq("id", item.id);
+    }
+    setLocalRecords((prev) => {
+      const list = prev[type] || activeRecords;
+      const nextList = list.filter((r) => r.id !== item.id);
+      if (type === "work_type") {
+        saveLocalWorkTypes(
+          nextList.map((u) => ({
+            id: u.id,
+            code: u.code,
+            name: u.name,
+            description: u.description,
+            active: u.active,
+          }))
+        );
+      }
+      return { ...prev, [type]: nextList };
+    });
+    toast.success(`Record ${item.code} deleted successfully`);
+    setDeletingItem(null);
+    qc.invalidateQueries({ queryKey: ["master", type] });
+  };
+
+  const handleToggleStatus = (item: GenericMasterItem) => {
+    const isNowActive = item.active === false;
+    setLocalRecords((prev) => {
+      const list = prev[type] || activeRecords;
+      const updated = list.map((r) => (r.id === item.id ? { ...r, active: isNowActive } : r));
+      if (type === "work_type") {
+        saveLocalWorkTypes(
+          updated.map((u) => ({
+            id: u.id,
+            code: u.code,
+            name: u.name,
+            description: u.description,
+            active: u.active,
+          }))
+        );
+      }
+      return { ...prev, [type]: updated };
+    });
+    toast.success(`Record ${item.code} ${isNowActive ? "activated" : "deactivated"}`);
   };
 
   return (
@@ -299,44 +496,86 @@ function MasterPage() {
                     <TableHead className="h-8">Description</TableHead>
                   )}
                   <TableHead className="h-8 w-24">Status</TableHead>
+                  <TableHead className="h-8 text-right w-36">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRows.map((r: Record<string, any>) => (
-                  <TableRow key={String(r["id"])} className="hover:bg-muted/40">
-                    <TableCell className="num py-2 font-mono font-bold text-primary">
-                      {String(r["code"])}
-                    </TableCell>
-                    <TableCell className="py-2 font-semibold text-foreground">
-                      {String(r["name"])}
-                    </TableCell>
-                    {isMaterial ? (
-                      <>
-                        <TableCell className="py-2">{String(r["composition"] ?? "—")}</TableCell>
-                        <TableCell className="num py-2 text-right font-mono">
-                          {fmt(Number(r["denier"] ?? 0), 0)}
-                        </TableCell>
-                        <TableCell className="num py-2 text-right font-mono font-bold text-foreground">
-                          ₹{fmt(Number(r["rate_per_kg"] ?? 0), 2)}
-                        </TableCell>
-                      </>
-                    ) : (
-                      <TableCell className="py-2 text-muted-foreground">
-                        {String(r["description"] ?? "—")}
+                {filteredRows.map((r: Record<string, any>) => {
+                  const itemObj = r as GenericMasterItem;
+                  return (
+                    <TableRow key={String(r["id"])} className="hover:bg-muted/40">
+                      <TableCell className="num py-2 font-mono font-bold text-primary">
+                        {String(r["code"])}
                       </TableCell>
-                    )}
-                    <TableCell className="py-2">
-                      <Badge
-                        variant={r["active"] !== false ? "default" : "secondary"}
-                        className={`text-[0.625rem] capitalize ${
-                          r["active"] !== false ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
-                        }`}
-                      >
-                        {r["active"] !== false ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableCell className="py-2 font-semibold text-foreground">
+                        {String(r["name"])}
+                      </TableCell>
+                      {isMaterial ? (
+                        <>
+                          <TableCell className="py-2">{String(r["composition"] ?? "—")}</TableCell>
+                          <TableCell className="num py-2 text-right font-mono">
+                            {fmt(Number(r["denier"] ?? 0), 0)}
+                          </TableCell>
+                          <TableCell className="num py-2 text-right font-mono font-bold text-foreground">
+                            ₹{fmt(Number(r["rate_per_kg"] ?? 0), 2)}
+                          </TableCell>
+                        </>
+                      ) : (
+                        <TableCell className="py-2 text-muted-foreground">
+                          {String(r["description"] ?? "—")}
+                        </TableCell>
+                      )}
+                      <TableCell className="py-2">
+                        <Badge
+                          variant={r["active"] !== false ? "default" : "secondary"}
+                          className={`text-[0.625rem] capitalize ${
+                            r["active"] !== false ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
+                          }`}
+                        >
+                          {r["active"] !== false ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-muted-foreground hover:text-primary"
+                            title="Edit Master Record"
+                            onClick={() => handleOpenEdit(itemObj)}
+                          >
+                            <Edit className="size-3.5" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "size-7",
+                              itemObj.active !== false
+                                ? "text-muted-foreground hover:text-amber-600"
+                                : "text-emerald-600 hover:text-emerald-700"
+                            )}
+                            title={itemObj.active !== false ? "Deactivate Record" : "Activate Record"}
+                            onClick={() => handleToggleStatus(itemObj)}
+                          >
+                            <Power className="size-3.5" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-muted-foreground hover:text-destructive"
+                            title="Delete Master Record"
+                            onClick={() => setDeletingItem(itemObj)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {!filteredRows.length && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
@@ -354,11 +593,13 @@ function MasterPage() {
         </Card>
       </div>
 
-      {/* New Record Modal Dialog */}
+      {/* New / Edit Record Modal Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md p-6 text-xs">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">New {meta?.label ?? type} Record</DialogTitle>
+            <DialogTitle className="text-sm font-bold">
+              {editingItem ? `Edit ${meta?.label ?? type} Record` : `New ${meta?.label ?? type} Record`}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <div className="space-y-1">
@@ -412,7 +653,7 @@ function MasterPage() {
               </>
             ) : (
               <div className="space-y-1">
-                <Label className="text-xs font-medium">Description</Label>
+                <Label className="text-xs font-medium">Description / Remark</Label>
                 <Input
                   className="h-8 text-xs"
                   placeholder="Additional master specifications..."
@@ -426,12 +667,39 @@ function MasterPage() {
             <Button variant="outline" size="sm" onClick={() => setOpen(false)} className="h-8 text-xs">
               Cancel
             </Button>
-            <Button size="sm" onClick={create} className="h-8 text-xs font-semibold">
-              Save Record
+            <Button size="sm" onClick={saveRecord} className="h-8 text-xs font-semibold">
+              {editingItem ? "Update Record" : "Save Record"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog for Record Deletion */}
+      <AlertDialog open={Boolean(deletingItem)} onOpenChange={(o) => !o && setDeletingItem(null)}>
+        {deletingItem && (
+          <AlertDialogContent className="max-w-md p-6 text-xs">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm font-bold text-destructive flex items-center gap-2">
+                <AlertTriangle className="size-4" />
+                Delete {meta?.label ?? type} Record ({deletingItem.code})?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground pt-1">
+                Are you sure you want to permanently delete master record{" "}
+                <strong>{deletingItem.code} — {deletingItem.name}</strong>? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 pt-3 border-t border-border mt-3">
+              <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => handleDeleteRecord(deletingItem)}
+              >
+                Delete Record
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
     </AppShell>
   );
 }

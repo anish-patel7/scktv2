@@ -811,7 +811,7 @@ function UsersGovernancePage() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Email Address (Login Username) *</Label>
-                <Input required type="email" placeholder="amit.patel@weaveone.com" className="h-7 text-xs font-mono" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+                <Input required type="email" placeholder="amit.patel@sckt.com" className="h-7 text-xs font-mono" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
               </div>
 
               <div className="grid grid-cols-2 gap-2">

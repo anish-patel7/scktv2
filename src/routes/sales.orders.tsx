@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, ShoppingCart, Truck, ShieldAlert, CheckCircle2, Search, FileSpreadsheet, PackageCheck, AlertTriangle } from "lucide-react";
+import { Plus, ShoppingCart, Truck, ShieldAlert, CheckCircle2, Search, FileSpreadsheet, PackageCheck, AlertTriangle, Factory, History } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ import { useSales } from "@/hooks/useSales";
 import { useInventory } from "@/hooks/useInventory";
 import { fmt } from "@/lib/costing";
 import { uid, type SalesOrderItem, type SalesOrderStatus, type DispatchItem, type InvoiceItem } from "@/lib/sales-store";
+import { SalesOrderRevisionDialog } from "@/components/sales-order-revision-dialog";
 
 export const Route = createFileRoute("/sales/orders")({
   head: () => ({
@@ -61,6 +62,8 @@ function SalesOrdersPage() {
   const [openCreditOverride, setOpenCreditOverride] = useState(false);
 
   const [selectedOrder, setSelectedOrder] = useState<SalesOrderItem | null>(null);
+  const [revisionOrder, setRevisionOrder] = useState<SalesOrderItem | null>(null);
+  const [openRevisionDialog, setOpenRevisionDialog] = useState(false);
 
   // Form states
   const [orderForm, setOrderForm] = useState({
@@ -456,16 +459,41 @@ function SalesOrdersPage() {
                             <Badge className={`text-[0.625rem] ${badge.class}`}>{badge.label}</Badge>
                           </TableCell>
                           <TableCell className="py-2 text-right">
-                            {o.status !== "completed" && o.status !== "cancelled" && (
+                            <div className="flex items-center justify-end gap-1.5">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleOpenDispatch(o)}
-                                className="h-6 text-[0.6875rem] gap-1 px-2"
+                                onClick={() => {
+                                  setRevisionOrder(o);
+                                  setOpenRevisionDialog(true);
+                                }}
+                                className="h-6 text-[0.6875rem] gap-1 px-2 text-indigo-600 border-indigo-300 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950/40"
+                                title="Revise Sales Order Quantity & Inspect Production Impact"
                               >
-                                <Truck className="size-3" /> Create Dispatch
+                                <History className="size-3" /> Revise Qty
                               </Button>
-                            )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                asChild
+                                className="h-6 text-[0.6875rem] gap-1 px-2 text-primary border-primary/30 hover:bg-primary/10"
+                                title="Plan production order & check material availability from this sales order"
+                              >
+                                <Link to="/production/orders" search={{ fromSalesOrder: o.id }}>
+                                  <Factory className="size-3" /> Plan Production
+                                </Link>
+                              </Button>
+                              {o.status !== "completed" && o.status !== "cancelled" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleOpenDispatch(o)}
+                                  className="h-6 text-[0.6875rem] gap-1 px-2"
+                                >
+                                  <Truck className="size-3" /> Dispatch
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -784,6 +812,18 @@ function SalesOrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* SALES ORDER REVISION & PRODUCTION IMPACT DIALOG (PHASE 3 PART A) */}
+      {revisionOrder && (
+        <SalesOrderRevisionDialog
+          open={openRevisionDialog}
+          onOpenChange={setOpenRevisionDialog}
+          salesOrder={revisionOrder}
+          onRevisionSaved={() => {
+            updateSales((prev) => ({ ...prev }));
+          }}
+        />
+      )}
     </AppShell>
   );
 }

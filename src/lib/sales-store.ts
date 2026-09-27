@@ -47,6 +47,9 @@ export interface SalesOrderItem {
   customer_id: string;
   customer_name: string;
   item_code: string;
+  design_no?: string | undefined;
+  party_order_no?: string | undefined;
+  cost_sheet_id?: string | undefined;
   quality: string;
   qty_metre: number;
   rate_per_metre: number;
@@ -243,6 +246,28 @@ const SEED: SalesData = {
       credit_override_approved: true, // Approved via manager credit override
       created_at: "2026-08-05T15:00:00Z",
     },
+    {
+      id: "so-demo-2543",
+      order_no: "SO/2543",
+      quote_id: "qt-001",
+      customer_id: "cust-labdhi",
+      customer_name: "LABDHI SAREES",
+      item_code: "SL02-SALSA",
+      design_no: "D-015",
+      party_order_no: "PO-LABDHI-99",
+      cost_sheet_id: "cs-sample-001",
+      quality: "Kashmiri Kota Pashmina",
+      qty_metre: 5000,
+      rate_per_metre: 175,
+      total_value_inr: 875000,
+      dispatched_qty_metre: 0,
+      pending_qty_metre: 5000,
+      delivery_date: "2026-10-15",
+      broker_name: "Shreeji Brokerage",
+      status: "confirmed",
+      credit_override_approved: true,
+      created_at: "2026-08-04T11:00:00Z",
+    },
   ],
   dispatches: [
     {
@@ -317,7 +342,14 @@ export function getSales(): SalesData {
     return SEED;
   }
   try {
-    return JSON.parse(raw);
+    const parsed: SalesData = JSON.parse(raw);
+    const existingOrderIds = new Set((parsed.orders || []).map((o) => o.id));
+    const missingOrders = SEED.orders.filter((so) => !existingOrderIds.has(so.id));
+    if (missingOrders.length > 0) {
+      parsed.orders = [...(parsed.orders || []), ...missingOrders];
+      saveSales(parsed);
+    }
+    return parsed;
   } catch {
     return SEED;
   }

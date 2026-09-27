@@ -645,7 +645,7 @@ function InspectionPage() {
             <div className="space-y-3 py-3 border border-border rounded-lg bg-muted/20 p-4 text-left font-mono">
               <div className="flex justify-between items-center border-b border-border pb-2">
                 <div>
-                  <h4 className="font-bold text-sm text-foreground">WEAVEONE TEXTILES</h4>
+                  <h4 className="font-bold text-sm text-foreground">SCKT TEXTILES</h4>
                   <p className="text-[0.625rem] text-muted-foreground">Official Quality Inspection Report</p>
                 </div>
                 <Badge className={`text-[0.625rem] ${GRADE_STYLES[selectedInsp.manual_grade_override || selectedInsp.system_grade]}`}>

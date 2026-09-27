@@ -17,6 +17,7 @@ export interface YarnStockItem {
   lot_no: string;
   yarn_code: string;
   yarn_name: string;
+  material_id?: string | undefined;
   supplier_name: string;
   grn_no: string;
   location_bin: string;
@@ -139,6 +140,57 @@ const SEED: InventoryData = {
       reorder_level_kg: 600, // Trigger reorder alert
       received_date: "2026-08-04",
       fifo_priority: 3,
+    },
+    {
+      id: "yn-004",
+      lot_no: "LOT-Y2026-110",
+      yarn_code: "Y-23",
+      yarn_name: "30 KOTA BLACK BEAM",
+      material_id: "mat-30-kota-black-beam",
+      supplier_name: "Surat Yarn Hub",
+      grn_no: "GRN-8902",
+      location_bin: "BIN-A-09",
+      total_kg: 150,
+      reserved_kg: 20,
+      available_kg: 130,
+      rate_per_kg: 232,
+      reorder_level_kg: 80,
+      received_date: "2026-08-05",
+      fifo_priority: 4,
+    },
+    {
+      id: "yn-005",
+      lot_no: "LOT-Y2026-115",
+      yarn_code: "Y-27",
+      yarn_name: "75 BEAM JARI",
+      material_id: "mat-75-beam-jari",
+      supplier_name: "Meera Zari Syndicate",
+      grn_no: "GRN-8910",
+      location_bin: "BIN-C-03",
+      total_kg: 60,
+      reserved_kg: 10,
+      available_kg: 50,
+      rate_per_kg: 380,
+      reorder_level_kg: 40,
+      received_date: "2026-08-06",
+      fifo_priority: 5,
+    },
+    {
+      id: "yn-006",
+      lot_no: "LOT-Y2026-122",
+      yarn_code: "Y-23",
+      yarn_name: "30 KOTA BLACK BEAM",
+      material_id: "mat-30-kota-black-beam",
+      supplier_name: "Surat Yarn Hub",
+      grn_no: "GRN-8935",
+      location_bin: "BIN-A-10",
+      total_kg: 80,
+      reserved_kg: 0,
+      available_kg: 80,
+      rate_per_kg: 232,
+      reorder_level_kg: 30,
+      received_date: "2026-08-12",
+      fifo_priority: 6,
     },
   ],
   beams: [
@@ -286,7 +338,14 @@ export function getInventory(): InventoryData {
     return SEED;
   }
   try {
-    return JSON.parse(raw);
+    const parsed: InventoryData = JSON.parse(raw);
+    const existingIds = new Set((parsed.yarn || []).map((y) => y.id));
+    const missingSeedYarn = SEED.yarn.filter((sy) => !existingIds.has(sy.id));
+    if (missingSeedYarn.length > 0) {
+      parsed.yarn = [...(parsed.yarn || []), ...missingSeedYarn];
+      saveInventory(parsed);
+    }
+    return parsed;
   } catch {
     return SEED;
   }

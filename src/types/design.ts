@@ -21,21 +21,28 @@ export interface BeamColour {
   updatedAt?: string | undefined;
 }
 
+export const PRIMARY_UNITS = [
+  "MTR",
+  "PCS",
+  "TAKAS",
+  "SAREE",
+  "YDS",
+  "KG",
+] as const;
+
+export type PrimaryUnit = typeof PRIMARY_UNITS[number] | string;
+
 export interface Design {
   id: string;
   designNumber: string;
   designName: string;
-  dn?: string | undefined;
   dnCode?: string | undefined;
   reed?: number | undefined;
   pick?: number | undefined;
   cards?: number | undefined;
-  patti?: number | undefined;
-  totalDC?: number | undefined;
   totalCut?: number | undefined;
   work?: string | undefined;
-  blueApt?: string | undefined;
-  description?: string | undefined;
+  primaryUnit?: string | undefined;
   remarks?: string | undefined;
   image?: string | undefined;
   createdAt?: string | undefined;

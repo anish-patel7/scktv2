@@ -12,6 +12,7 @@ export type NavGroup = {
 export const MASTER_TYPES = [
   { type: "material", label: "Yarn" },
   { type: "item", label: "Item" },
+  { type: "work_type", label: "Work Type" },
   { type: "party", label: "Party" },
   { type: "warehouse", label: "Warehouse" },
   { type: "jobwork_party", label: "Job Work Party" },
@@ -34,9 +35,9 @@ export const NAV: NavGroup[] = [
   {
     label: "Design",
     items: [
-      { label: "Designs", to: "/designs", phase: 2 },
-      { label: "Image Gallery", to: "/gallery", phase: 2 },
-      { label: "Feeder Cross-Reference", to: "/feeders", phase: 2 },
+      { label: "Designs", to: "/designs" },
+      { label: "Image Gallery", to: "/gallery" },
+      { label: "Feeder Cross-Reference", to: "/feeders" },
     ],
   },
   {

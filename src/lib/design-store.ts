@@ -1,23 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignWithDetails, FeederCrossReferenceItem, DesignFilter } from "@/types/design";
 
-const STORAGE_KEY = "weaveone_designs_v1";
-const DRAFT_KEY = "weaveone_design_draft";
+const STORAGE_KEY = "weaveone_designs_v2";
+const DRAFT_KEY = "weaveone_design_draft_v2";
 
 const SEED_DESIGNS: DesignWithDetails[] = [
   {
     id: "des-015-uuid-0001",
     designNumber: "D-015",
     designName: "Kashmiri Pashmina",
-    dn: "DN-440",
     dnCode: "DN-440-KASH",
     reed: 120,
-    patti: 12,
-    totalDC: 14400,
     totalCut: 4,
     work: "Jacquard Pashmina",
-    blueApt: "Blue-99 / APT-A",
-    description: "Premium Kashmiri Pashmina weave with intricate Jacquard floral patterns.",
+    primaryUnit: "PCS",
     remarks: "Approved for high-end boutique range.",
     image: "https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?w=600&auto=format&fit=crop&q=80",
     createdAt: "2026-08-01T10:00:00Z",
@@ -105,15 +101,11 @@ const SEED_DESIGNS: DesignWithDetails[] = [
     id: "des-012-uuid-0002",
     designName: "Silk Brocade Royal",
     designNumber: "D-012",
-    dn: "DN-310",
     dnCode: "DN-310-ROYAL",
     reed: 140,
-    patti: 16,
-    totalDC: 18000,
     totalCut: 6,
     work: "Brocade Work",
-    blueApt: "APT-B",
-    description: "Royal Silk Brocade pattern featuring metallic gold weave accents.",
+    primaryUnit: "SAREE",
     remarks: "Requires slow loom speed.",
     image: "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=600&auto=format&fit=crop&q=80",
     createdAt: "2026-07-15T08:30:00Z",
@@ -153,15 +145,11 @@ const SEED_DESIGNS: DesignWithDetails[] = [
     id: "des-008-uuid-0003",
     designName: "Jacquard Floral Garden",
     designNumber: "D-008",
-    dn: "DN-180",
     dnCode: "DN-180-FLORAL",
     reed: 100,
-    patti: 8,
-    totalDC: 9600,
     totalCut: 2,
     work: "Floral Motif",
-    blueApt: "Blue-12",
-    description: "Multi-colored floral jacquard motif for dress materials.",
+    primaryUnit: "MTR",
     remarks: "Standard export quality.",
     image: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop&q=80",
     createdAt: "2026-06-20T11:15:00Z",
@@ -247,9 +235,9 @@ export function getFilteredDesigns(filter: DesignFilter): {
       const matchBasic =
         d.designNumber.toLowerCase().includes(q) ||
         d.designName.toLowerCase().includes(q) ||
-        (d.dn && d.dn.toLowerCase().includes(q)) ||
         (d.dnCode && d.dnCode.toLowerCase().includes(q)) ||
         (d.work && d.work.toLowerCase().includes(q)) ||
+        (d.primaryUnit && d.primaryUnit.toLowerCase().includes(q)) ||
         (d.reed && String(d.reed).includes(q)) ||
         (d.pick && String(d.pick).includes(q));
 

@@ -53,7 +53,7 @@ function GalleryPage() {
     return (
       d.designNumber.toLowerCase().includes(q) ||
       d.designName.toLowerCase().includes(q) ||
-      (d.dn && d.dn.toLowerCase().includes(q)) ||
+      (d.dnCode && d.dnCode.toLowerCase().includes(q)) ||
       (d.work && d.work.toLowerCase().includes(q)) ||
       d.beamColours.some((bc) => bc.beamColour.toLowerCase().includes(q))
     );
@@ -150,7 +150,8 @@ function GalleryPage() {
                       {design.designName}
                     </h3>
                     <p className="text-[0.6875rem] text-muted-foreground font-mono">
-                      {design.dn ? `${design.dn} · ` : ""}Reed {design.reed || "—"} / Pick {design.pick || "—"}
+                      {design.dnCode ? `${design.dnCode} · ` : ""}Reed {design.reed || "—"} / Pick {design.pick || "—"}
+                      {design.primaryUnit ? ` · ${design.primaryUnit}` : ""}
                     </p>
                   </div>
 
@@ -230,7 +231,7 @@ function GalleryPage() {
 
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="font-mono">
-                  DN: {selectedImageModal.dn || "—"} | Reed: {selectedImageModal.reed || "—"} | Pick: {selectedImageModal.pick || "—"} | Cards: {selectedImageModal.cards || "—"}
+                  Design: {selectedImageModal.designNumber || "—"} | Reed: {selectedImageModal.reed || "—"} | Pick: {selectedImageModal.pick || "—"} | Cards: {selectedImageModal.cards || "—"}
                 </span>
                 <span className="font-semibold text-foreground">{selectedImageModal.beamColours.length} Beam Colours</span>
               </div>

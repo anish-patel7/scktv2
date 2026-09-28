@@ -22,7 +22,10 @@ import {
   Eye,
   Info,
   ClipboardCheck,
+  Route,
 } from "lucide-react";
+import { FabricProcessRouteDialog } from "@/components/fabric-process-route-dialog";
+import { FabricProcessRoutingService } from "@/services/fabric-process-routing.service";
 import {
   Dialog,
   DialogContent,
@@ -90,6 +93,10 @@ export function JobCardReceiveDialog({
   // Phase 5B Quality Inspection Dialog state
   const [selectedRollForInspection, setSelectedRollForInspection] = useState<FabricRollDraft | null>(null);
   const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState<boolean>(false);
+
+  // Phase 5C Process Routing Dialog state
+  const [selectedRollForRouting, setSelectedRollForRouting] = useState<FabricRollDraft | null>(null);
+  const [isRoutingDialogOpen, setIsRoutingDialogOpen] = useState<boolean>(false);
 
   if (!draft || !order) return null;
 
@@ -704,19 +711,22 @@ export function JobCardReceiveDialog({
                       <th className="py-2.5 px-3">Grade</th>
                       <th className="py-2.5 px-3">Disposition</th>
                       <th className="py-2.5 px-3">Saleable Preview</th>
+                      <th className="py-2.5 px-3">Process Route</th>
                       <th className="py-2.5 px-3 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-mono">
                     {summary.allRollDrafts.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-8 text-center text-slate-500 font-sans">
+                        <td colSpan={11} className="py-8 text-center text-slate-500 font-sans">
                           No fabric roll drafts formed yet. Complete a receipt simulation to generate roll drafts.
                         </td>
                       </tr>
                     ) : (
                       summary.allRollDrafts.map((r) => {
                         const qSummary = ProductionPlanningService.getRollQualitySummary(r);
+                        const rSummary = FabricProcessRoutingService.getRollRoutingSummary(r);
+
                         return (
                           <tr key={r.id} className="hover:bg-slate-800/30">
                             <td className="py-2 px-3 font-semibold text-indigo-300">{r.temporaryRollNo}</td>
@@ -773,19 +783,60 @@ export function JobCardReceiveDialog({
                                 {qSummary.saleabilityPreview}
                               </Badge>
                             </td>
+                            <td className="py-2 px-3">
+                              {rSummary.routeDecision === "NO_FURTHER_PROCESS" ? (
+                                <Badge variant="outline" className="border-slate-700 text-slate-400 bg-slate-900 text-[10px]">
+                                  No Process
+                                </Badge>
+                              ) : rSummary.routeStatus === "READY" ? (
+                                <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10 text-[10px]">
+                                  Ready ({rSummary.totalSteps} steps)
+                                </Badge>
+                              ) : rSummary.routeStatus === "BLOCKED" ? (
+                                <Badge variant="outline" className="border-rose-500/40 text-rose-300 bg-rose-500/10 text-[10px]">
+                                  Blocked
+                                </Badge>
+                              ) : rSummary.routeStatus === "REVIEW_REQUIRED" ? (
+                                <Badge variant="outline" className="border-amber-500/40 text-amber-300 bg-amber-500/10 text-[10px]">
+                                  Review
+                                </Badge>
+                              ) : rSummary.routeStatus === "PLANNED" ? (
+                                <Badge variant="outline" className="border-blue-500/40 text-blue-300 bg-blue-500/10 text-[10px]">
+                                  Planned ({rSummary.totalSteps})
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="border-slate-800 text-slate-500 text-[10px]">
+                                  Not Planned
+                                </Badge>
+                              )}
+                            </td>
                             <td className="py-2 px-3 text-center">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedRollForInspection(r);
-                                  setIsInspectionDialogOpen(true);
-                                }}
-                                className="h-6 text-[11px] px-2 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40"
-                              >
-                                <ClipboardCheck className="w-3 h-3 mr-1" />
-                                {qSummary.inspectionStatus === "UNINSPECTED" ? "Inspect" : "QC Details"}
-                              </Button>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedRollForInspection(r);
+                                    setIsInspectionDialogOpen(true);
+                                  }}
+                                  className="h-6 text-[11px] px-2 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40"
+                                >
+                                  <ClipboardCheck className="w-3 h-3 mr-1" />
+                                  {qSummary.inspectionStatus === "UNINSPECTED" ? "Inspect" : "QC"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedRollForRouting(r);
+                                    setIsRoutingDialogOpen(true);
+                                  }}
+                                  className="h-6 text-[11px] px-2 border-slate-700 text-slate-300 hover:bg-slate-800"
+                                >
+                                  <Route className="w-3 h-3 mr-1 text-indigo-400" />
+                                  {rSummary.routePlan ? "Route" : "Plan"}
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -963,6 +1014,18 @@ export function JobCardReceiveDialog({
       roll={selectedRollForInspection}
       order={order}
       jobCard={draft}
+    />
+
+    {/* Phase 5C Process Route Dialog */}
+    <FabricProcessRouteDialog
+      open={isRoutingDialogOpen}
+      onOpenChange={setIsRoutingDialogOpen}
+      roll={selectedRollForRouting}
+      order={order}
+      jobCard={draft}
+      onSaved={() => {
+        onUpdated?.();
+      }}
     />
     </>
   );

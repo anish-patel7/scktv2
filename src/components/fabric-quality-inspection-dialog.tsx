@@ -22,7 +22,10 @@ import {
   Award,
   Ban,
   ArrowRight,
+  Route,
 } from "lucide-react";
+import { FabricProcessRouteDialog } from "@/components/fabric-process-route-dialog";
+import { FabricProcessRoutingService } from "@/services/fabric-process-routing.service";
 import {
   Dialog,
   DialogContent,
@@ -105,6 +108,13 @@ export function FabricQualityInspectionDialog({
   // Revision / Reinspection state
   const [isRevisionMode, setIsRevisionMode] = useState<boolean>(false);
   const [revisionReason, setRevisionReason] = useState<string>("Reinspection / Quality Review");
+
+  // Phase 5C Process Routing Dialog state
+  const [isRouteDialogOpen, setIsRouteDialogOpen] = useState<boolean>(false);
+  const existingRoutePlan = useMemo(() => {
+    if (!roll) return undefined;
+    return FabricProcessRoutingService.getRoutePlanForRoll(roll.id);
+  }, [roll]);
 
   // Traceable Upstream Context Resolution (Roll Draft -> Job Card -> Production Order -> Sales Order)
   const resolvedOrder: ProductionOrder | null = useMemo(() => {
@@ -947,6 +957,53 @@ export function FabricQualityInspectionDialog({
           </p>
 
           <div className="flex items-center gap-2">
+            {/* Phase 5C Process Routing Integration (Step 40) */}
+            {existingRoutePlan ? (
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setIsRouteDialogOpen(true)}
+                className="border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40"
+              >
+                <Route className="w-3.5 h-3.5 mr-1.5" />
+                Review Route Plan
+              </Button>
+            ) : disposition === "PROCESS_REQUIRED" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setIsRouteDialogOpen(true)}
+                className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/40"
+              >
+                <Route className="w-3.5 h-3.5 mr-1.5" />
+                Plan Process Route
+              </Button>
+            ) : disposition === "REWORK" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setIsRouteDialogOpen(true)}
+                className="border-amber-500/40 text-amber-300 hover:bg-amber-950/40"
+              >
+                <Route className="w-3.5 h-3.5 mr-1.5" />
+                Plan Quality Rework
+              </Button>
+            ) : disposition === "HOLD" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setIsRouteDialogOpen(true)}
+                className="border-rose-500/40 text-rose-300 hover:bg-rose-950/40"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 mr-1.5" />
+                Why Blocked
+              </Button>
+            ) : null}
+
             <Button
               variant="outline"
               size="sm"
@@ -966,6 +1023,20 @@ export function FabricQualityInspectionDialog({
             </Button>
           </div>
         </DialogFooter>
+
+        {/* Phase 5C Process Route Dialog Modal */}
+        {roll && (
+          <FabricProcessRouteDialog
+            open={isRouteDialogOpen}
+            onOpenChange={setIsRouteDialogOpen}
+            roll={roll}
+            order={resolvedOrder}
+            jobCard={resolvedJobCard}
+            onSaved={() => {
+              onSaved?.();
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

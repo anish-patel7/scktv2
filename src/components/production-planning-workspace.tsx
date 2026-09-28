@@ -27,6 +27,7 @@ import {
   PackageCheck,
   Gauge,
   ListPlus,
+  Route,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,8 +39,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { FabricProcessRoutingWorkspace } from "@/components/fabric-process-routing-workspace";
 import { toast } from "sonner";
 import {
   ProductionPlanningService,
@@ -192,6 +195,9 @@ export function ProductionPlanningWorkspace({
   const [selectedDraftForReceive, setSelectedDraftForReceive] = useState<JobCardDraft | null>(null);
   const [isJobCardReceiveOpen, setIsJobCardReceiveOpen] = useState(false);
 
+  // Phase 5C Fabric Process Routing states
+  const [isProcessRoutingOpen, setIsProcessRoutingOpen] = useState(false);
+
   // Automated Test Suite Viewer states (Phase 1, 2, 3, 3B, 4A, 4B, 4C & 5A)
   const [showTestModal, setShowTestModal] = useState(false);
   const [testResults, setTestResults] = useState<{
@@ -323,6 +329,11 @@ export function ProductionPlanningWorkspace({
     refreshKey;
     return ProductionPlanningService.getProductionOrderReceiveSummary(order);
   }, [order, refreshKey]);
+
+  // Phase 5C All Roll Drafts across Order for Process Routing
+  const allOrderRollDrafts = useMemo(() => {
+    return orderReceiveSummary.jobCardsSummary.flatMap((jc) => jc.allRollDrafts);
+  }, [orderReceiveSummary]);
 
   // Split into Warp and Weft lines
   const warpRequirements = materialRequirements.filter((r) => r.sourceType === "WARP");
@@ -1848,6 +1859,17 @@ export function ProductionPlanningWorkspace({
                           >
                             <PackageCheck className="size-3" /> Receive
                           </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setIsProcessRoutingOpen(true);
+                            }}
+                            className="h-6 text-[0.625rem] text-indigo-700 dark:text-indigo-300 font-medium"
+                          >
+                            <Route className="size-3 mr-1" /> Route Plan
+                          </Button>
                         </div>
                       </div>
                     );
@@ -2127,6 +2149,46 @@ export function ProductionPlanningWorkspace({
           onRefresh?.();
         }}
       />
+
+      {/* Phase 5C Fabric Process Routing Workspace Dialog */}
+      <Dialog open={isProcessRoutingOpen} onOpenChange={setIsProcessRoutingOpen}>
+        <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-4 bg-slate-950 border-slate-800 text-slate-100 shadow-2xl">
+          <DialogHeader className="pb-2 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                <Route className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                  <span>Fabric Process Routing Workspace</span>
+                  <Badge variant="outline" className="border-indigo-500/40 text-indigo-300 font-mono text-xs">
+                    PO: {order.order_no}
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-400">
+                  Manage downstream process routes, job work planning & sequencing across all rolls of this order.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto pt-2">
+            <FabricProcessRoutingWorkspace
+              order={order}
+              jobCards={orderReceiveSummary.jobCardsSummary.map((jc) => ({
+                id: jc.jobCardDraftId,
+                jobCardNo: jc.jobCardNo,
+                loomNo: jc.loomNo,
+              })) as any}
+              rolls={allOrderRollDrafts}
+              onRefresh={() => {
+                setRefreshKey((k) => k + 1);
+                onRefresh?.();
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Automated Test Suite Modal */}
       {showTestModal && testResults && (

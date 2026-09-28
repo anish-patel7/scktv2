@@ -1,3 +1,11 @@
+/**
+ * ARCHITECTURAL AUTHORITY BOUNDARY NOTE (PRE-PHASE 5C):
+ * This legacy /quality/inspection workflow and its hard-coded 4-point grade thresholds
+ * must NOT become authoritative input for Phase 5C process routing.
+ * Authoritative production roll quality, grade planning, and routing disposition
+ * are governed strictly by the Phase 5B / 5C Production Planning & Quality models.
+ */
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus, CheckCircle2, ShieldAlert, Award, Search, Printer, Activity, Lock, Unlock, AlertCircle } from "lucide-react";

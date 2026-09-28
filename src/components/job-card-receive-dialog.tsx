@@ -21,6 +21,7 @@ import {
   Divide,
   Eye,
   Info,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -46,6 +47,7 @@ import {
   type JobCardReceiveSimulationTransaction,
 } from "@/services/production-planning.service";
 import type { ProductionOrder } from "@/lib/production-store";
+import { FabricQualityInspectionDialog } from "@/components/fabric-quality-inspection-dialog";
 
 interface JobCardReceiveDialogProps {
   open: boolean;
@@ -85,6 +87,10 @@ export function JobCardReceiveDialog({
   const [adjustmentReason, setAdjustmentReason] = useState<string>("");
   const [adjustmentRemark, setAdjustmentRemark] = useState<string>("");
 
+  // Phase 5B Quality Inspection Dialog state
+  const [selectedRollForInspection, setSelectedRollForInspection] = useState<FabricRollDraft | null>(null);
+  const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState<boolean>(false);
+
   if (!draft || !order) return null;
 
   const summary: JobCardReceiveSummary = ProductionPlanningService.getJobCardReceiveSummary(draft, order);
@@ -108,7 +114,7 @@ export function JobCardReceiveDialog({
     const newRoll: RollInputRow = {
       id: `roll-${Date.now()}-${rolls.length + 1}`,
       qtyMetre: unallocated > 0 ? unallocated : 0,
-      widthInch: 54,
+      widthInch: draft?.pannaInch,
     };
     setRolls((prev) => [...prev, newRoll]);
   };
@@ -154,7 +160,7 @@ export function JobCardReceiveDialog({
     const newRollRows: RollInputRow[] = splitRolls.map((sr, idx) => ({
       id: `split-${Date.now()}-${idx + 1}`,
       qtyMetre: sr.qtyMetre,
-      widthInch: 54,
+      widthInch: draft?.pannaInch,
     }));
     setRolls(newRollRows);
     toast.success(`Split ${receiveQty.toFixed(3)} MTR equally across ${splitCount} rolls.`);
@@ -264,7 +270,8 @@ export function JobCardReceiveDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-slate-950 border-slate-800 text-slate-100">
         {/* Header */}
         <DialogHeader className="p-6 pb-4 border-b border-slate-800 bg-slate-900/60 flex-shrink-0">
@@ -588,7 +595,8 @@ export function JobCardReceiveDialog({
                                 type="number"
                                 step="1"
                                 min="10"
-                                value={r.widthInch ?? 54}
+                                placeholder="Opt."
+                                value={r.widthInch ?? ""}
                                 onChange={(e) => handleRollFieldChange(idx, "widthInch", e.target.value)}
                                 className="h-8 bg-slate-950 border-slate-700 text-white font-mono text-xs"
                               />
@@ -690,41 +698,98 @@ export function JobCardReceiveDialog({
                       <th className="py-2.5 px-3">Roll Draft No</th>
                       <th className="py-2.5 px-3">Receive Ref</th>
                       <th className="py-2.5 px-3">Qty (MTR)</th>
-                      <th className="py-2.5 px-3">Gross Wt</th>
                       <th className="py-2.5 px-3">Width</th>
                       <th className="py-2.5 px-3">State</th>
-                      <th className="py-2.5 px-3">Inspection</th>
-                      <th className="py-2.5 px-3">Saleable</th>
+                      <th className="py-2.5 px-3">Inspection Status</th>
+                      <th className="py-2.5 px-3">Grade</th>
+                      <th className="py-2.5 px-3">Disposition</th>
+                      <th className="py-2.5 px-3">Saleable Preview</th>
+                      <th className="py-2.5 px-3 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-mono">
                     {summary.allRollDrafts.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-slate-500 font-sans">
+                        <td colSpan={10} className="py-8 text-center text-slate-500 font-sans">
                           No fabric roll drafts formed yet. Complete a receipt simulation to generate roll drafts.
                         </td>
                       </tr>
                     ) : (
-                      summary.allRollDrafts.map((r) => (
-                        <tr key={r.id} className="hover:bg-slate-800/30">
-                          <td className="py-2 px-3 font-semibold text-indigo-300">{r.temporaryRollNo}</td>
-                          <td className="py-2 px-3 text-slate-400">{r.receiveDraftId.slice(0, 14)}...</td>
-                          <td className="py-2 px-3 text-white font-bold">{r.qtyMetre.toFixed(3)}</td>
-                          <td className="py-2 px-3 text-slate-400">{r.grossWeightKg ? `${r.grossWeightKg.toFixed(2)} kg` : "—"}</td>
-                          <td className="py-2 px-3 text-slate-400">{r.widthInch ? `${r.widthInch}"` : "54\""}</td>
-                          <td className="py-2 px-3">
-                            <Badge variant="outline" className="border-amber-500/30 text-amber-300 bg-amber-500/10 text-[10px]">
-                              {r.stockStatus}
-                            </Badge>
-                          </td>
-                          <td className="py-2 px-3">
-                            <Badge variant="outline" className="border-purple-500/30 text-purple-300 bg-purple-500/10 text-[10px]">
-                              {r.inspectionStatus}
-                            </Badge>
-                          </td>
-                          <td className="py-2 px-3 text-rose-400">NO</td>
-                        </tr>
-                      ))
+                      summary.allRollDrafts.map((r) => {
+                        const qSummary = ProductionPlanningService.getRollQualitySummary(r);
+                        return (
+                          <tr key={r.id} className="hover:bg-slate-800/30">
+                            <td className="py-2 px-3 font-semibold text-indigo-300">{r.temporaryRollNo}</td>
+                            <td className="py-2 px-3 text-slate-400">{r.receiveDraftId.slice(0, 14)}...</td>
+                            <td className="py-2 px-3 text-white font-bold">{r.qtyMetre.toFixed(3)}</td>
+                            <td className="py-2 px-3 text-slate-400">{r.widthInch ? `${r.widthInch}"` : "—"}</td>
+                            <td className="py-2 px-3">
+                              <Badge variant="outline" className="border-amber-500/30 text-amber-300 bg-amber-500/10 text-[10px]">
+                                {r.stockStatus}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-3">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  qSummary.inspectionStatus === "INSPECTED"
+                                    ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10 text-[10px]"
+                                    : qSummary.inspectionStatus === "INSPECTION_IN_PROGRESS"
+                                    ? "border-cyan-500/40 text-cyan-300 bg-cyan-500/10 text-[10px]"
+                                    : "border-purple-500/30 text-purple-300 bg-purple-500/10 text-[10px]"
+                                }
+                              >
+                                {qSummary.inspectionStatus}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-3">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  qSummary.proposedGrade === "UNASSIGNED"
+                                    ? "border-slate-700 text-slate-400 text-[10px]"
+                                    : "border-amber-500/40 text-amber-300 bg-amber-500/10 text-[10px]"
+                                }
+                              >
+                                {qSummary.proposedGrade}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className="text-[11px] text-slate-300 font-sans">
+                                {qSummary.disposition === "NOT_SET" ? "—" : qSummary.disposition}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  qSummary.saleabilityPreview === "ELIGIBLE"
+                                    ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10 text-[10px]"
+                                    : qSummary.saleabilityPreview === "REVIEW_REQUIRED"
+                                    ? "border-amber-500/40 text-amber-400 bg-amber-500/10 text-[10px]"
+                                    : "border-rose-500/40 text-rose-400 bg-rose-500/10 text-[10px]"
+                                }
+                              >
+                                {qSummary.saleabilityPreview}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedRollForInspection(r);
+                                  setIsInspectionDialogOpen(true);
+                                }}
+                                className="h-6 text-[11px] px-2 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40"
+                              >
+                                <ClipboardCheck className="w-3 h-3 mr-1" />
+                                {qSummary.inspectionStatus === "UNINSPECTED" ? "Inspect" : "QC Details"}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -877,7 +942,7 @@ export function JobCardReceiveDialog({
         <DialogFooter className="p-4 border-t border-slate-800 bg-slate-900/60 flex-shrink-0 flex items-center justify-between sm:justify-between">
           <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>SCKT Phase 5A: Frontend Execution Simulation Only</span>
+            <span>SCKT Phase 5A & 5B: Frontend Execution Simulation Only (Receive & Quality Inspection)</span>
           </div>
           <Button
             size="sm"
@@ -890,5 +955,15 @@ export function JobCardReceiveDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Phase 5B Quality Inspection Dialog */}
+    <FabricQualityInspectionDialog
+      open={isInspectionDialogOpen}
+      onOpenChange={setIsInspectionDialogOpen}
+      roll={selectedRollForInspection}
+      order={order}
+      jobCard={draft}
+    />
+    </>
   );
 }

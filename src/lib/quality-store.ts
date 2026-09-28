@@ -1,4 +1,11 @@
 // Phase 6 — Quality Assurance & Inspection Store (M35)
+/**
+ * ARCHITECTURAL AUTHORITY BOUNDARY NOTE (PRE-PHASE 5C):
+ * The legacy /quality/inspection workflow and hard-coded 4-point grade thresholds
+ * defined in this store must NOT become authoritative input for Phase 5C process routing.
+ * Authoritative production roll quality and routing disposition are governed strictly
+ * by Phase 5B / Phase 5C Production Planning & Quality Inspection models.
+ */
 
 export type DefectType =
   | "warp_float"

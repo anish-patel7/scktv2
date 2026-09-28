@@ -1257,6 +1257,302 @@ export function splitQuantityEqually(totalQty: number, rollCount: number): Array
   return rolls;
 }
 
+// =========================================================================
+// PHASE 5B TYPES & INTERFACES (Fabric Quality Inspection + Defect Capture + Grade/Disposition)
+// Frontend Execution Simulation Only — No Real Fabric Stock Release — No Backend Changes
+// =========================================================================
+
+export type FabricInspectionStatus =
+  | "UNINSPECTED"
+  | "INSPECTION_IN_PROGRESS"
+  | "INSPECTED"
+  | "REVIEW_REQUIRED";
+
+export type FabricGrade = "A" | "B" | "C" | "REJECT" | "UNASSIGNED";
+
+export type GradeSource = "AUTO_RULE" | "MANUAL" | "UNASSIGNED";
+
+export type FabricDisposition =
+  | "ACCEPTED"
+  | "HOLD"
+  | "REWORK"
+  | "REJECT"
+  | "PROCESS_REQUIRED";
+
+export type SaleabilityPreviewStatus =
+  | "NOT_EVALUATED"
+  | "ELIGIBLE"
+  | "NOT_ELIGIBLE"
+  | "REVIEW_REQUIRED";
+
+export type FabricDefectType =
+  | "broken_end"
+  | "missing_pick"
+  | "oil_stain"
+  | "oil_mark"
+  | "hole"
+  | "warp_float"
+  | "weft_slub"
+  | "slub"
+  | "tension_variation"
+  | "reed_mark"
+  | "shade_variation"
+  | "width_variation"
+  | "stain"
+  | "other";
+
+export interface FabricDefectLine {
+  id: string;
+  defectType: FabricDefectType;
+  positionMetre?: number | undefined;
+  lengthMetre?: number | undefined;
+  count?: number | undefined;
+  severity?: "MINOR" | "MAJOR" | "CRITICAL" | undefined;
+  remark?: string | undefined;
+}
+
+export interface FabricInspectionDraft {
+  id: string;
+  inspectionRef: string; // e.g. "INSP-DRAFT-001"
+  rollDraftId: string;
+  temporaryRollNo: string;
+  receiveDraftId: string;
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  productionOrderNo: string;
+  salesOrderId?: string | undefined;
+  salesOrderNo?: string | undefined;
+  customerName?: string | undefined;
+  itemCode?: string | undefined;
+  designNo?: string | undefined;
+  loomId?: string | undefined;
+  loomNo?: string | undefined;
+  beamNo?: string | undefined;
+  rollQtyMetre: number;
+  inspectedQtyMetre: number;
+  remainingUninspectedQtyMetre: number;
+  inspectionCoveragePercent: number;
+  expectedWidthInch?: number | undefined;
+  measuredWidthInch?: number | undefined;
+  widthDifferenceInch?: number | undefined;
+  widthStatus?: "OK" | "WIDTH_REVIEW_REQUIRED" | "NOT_CONFIGURED" | undefined;
+  defectLines: FabricDefectLine[];
+  defectCount: number;
+  inspectionStatus: FabricInspectionStatus;
+  proposedGrade: FabricGrade;
+  gradeSource: GradeSource;
+  gradeReason?: string | undefined;
+  disposition: FabricDisposition | "NOT_SET";
+  dispositionReason?: string | undefined;
+  saleabilityPreview: SaleabilityPreviewStatus;
+  saleabilityReason?: string | undefined;
+  processRouting?: string | undefined;
+  inspectionDate: string;
+  inspectorName?: string | undefined;
+  inspectionMethod?: string | undefined;
+  remark?: string | undefined;
+  isReinspection?: boolean | undefined;
+  previousInspectionRef?: string | undefined;
+  previousGrade?: FabricGrade | undefined;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RollQualitySummary {
+  rollDraftId: string;
+  temporaryRollNo: string;
+  rollQtyMetre: number;
+  inspectedQtyMetre: number;
+  remainingUninspectedQtyMetre: number;
+  inspectionCoveragePercent: number;
+  inspectionStatus: FabricInspectionStatus;
+  defectCount: number;
+  proposedGrade: FabricGrade;
+  gradeSource: GradeSource;
+  gradeReason?: string | undefined;
+  disposition: FabricDisposition | "NOT_SET";
+  dispositionReason?: string | undefined;
+  saleabilityPreview: SaleabilityPreviewStatus;
+  saleabilityReason?: string | undefined;
+  revisionCount: number;
+  latestInspection?: FabricInspectionDraft | undefined;
+  inspectionHistory: FabricInspectionDraft[];
+}
+
+export interface JobCardQualitySummary {
+  jobCardDraftId: string;
+  jobCardNo: string;
+  productionOrderId: string;
+  productionOrderNo: string;
+  totalRollsCount: number;
+  uninspectedRollsCount: number;
+  inProgressRollsCount: number;
+  inspectedRollsCount: number;
+  holdRollsCount: number;
+  reworkRollsCount: number;
+  rejectedRollsCount: number;
+  acceptedRollsCount: number;
+  gradeDistribution: Record<FabricGrade, number>;
+  rollsSummary: RollQualitySummary[];
+}
+
+export interface ProductionOrderQualitySummary {
+  productionOrderId: string;
+  productionOrderNo: string;
+  receivedFabricQtyMetre: number;
+  totalRollsCount: number;
+  inspectedQtyMetre: number;
+  uninspectedQtyMetre: number;
+  acceptedQtyMetre: number;
+  holdQtyMetre: number;
+  reworkQtyMetre: number;
+  rejectedQtyMetre: number;
+  jobCardsQualitySummary: JobCardQualitySummary[];
+  exceptionsCount: number;
+}
+
+export interface QualityExceptionsSummary {
+  uninspectedRollsCount: number;
+  partialInspectionsCount: number;
+  gradeUnassignedCount: number;
+  widthReviewRequiredCount: number;
+  holdCount: number;
+  reworkCount: number;
+  rejectCount: number;
+  saleabilityReviewRequiredCount: number;
+  totalExceptions: number;
+}
+
+// In-Memory Execution Simulation Store (Phase 5B - Frontend only)
+const inMemoryFabricInspections = new Map<string, FabricInspectionDraft[]>();
+
+// =========================================================================
+// PHASE 5B PURE HELPER FUNCTIONS (Step 45)
+// =========================================================================
+
+export function calculateInspectionCoverage(inspectedQty: number, rollQty: number): number {
+  if (rollQty <= 0) return 0;
+  const pct = (inspectedQty / rollQty) * 100;
+  return Math.round(Math.min(100, Math.max(0, pct)) * 100) / 100;
+}
+
+export function calculateUninspectedQty(inspectedQty: number, rollQty: number): number {
+  return roundQty(Math.max(0, rollQty - inspectedQty));
+}
+
+export function countDefects(defectLines: FabricDefectLine[]): number {
+  return sumQty(defectLines.map((d) => d.count || 1));
+}
+
+export function groupDefectsByType(defectLines: FabricDefectLine[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const d of defectLines) {
+    const key = d.defectType;
+    counts[key] = (counts[key] || 0) + (d.count || 1);
+  }
+  return counts;
+}
+
+export function validateInspectionQuantity(
+  inspectedQty: number,
+  rollQty: number
+): { valid: boolean; error?: string | undefined } {
+  if (inspectedQty <= 0) {
+    return { valid: false, error: "Inspected quantity must be greater than zero." };
+  }
+  if (inspectedQty > rollQty) {
+    const excess = roundQty(inspectedQty - rollQty);
+    return {
+      valid: false,
+      error: `Inspected quantity (${inspectedQty.toFixed(3)} MTR) exceeds roll quantity (${rollQty.toFixed(3)} MTR) by ${excess.toFixed(3)} MTR.`,
+    };
+  }
+  return { valid: true };
+}
+
+export function deriveInspectionStatus(inspectedQty: number, rollQty: number): FabricInspectionStatus {
+  if (inspectedQty <= 0) return "UNINSPECTED";
+  if (inspectedQty < rollQty) return "INSPECTION_IN_PROGRESS";
+  return "INSPECTED";
+}
+
+export function deriveSaleabilityPreview(params: {
+  inspectionStatus: FabricInspectionStatus;
+  grade: FabricGrade;
+  disposition: FabricDisposition | "NOT_SET";
+  hasSaleabilityRule?: boolean | undefined;
+}): { status: SaleabilityPreviewStatus; reason: string } {
+  const { inspectionStatus, grade, disposition, hasSaleabilityRule } = params;
+
+  if (inspectionStatus === "UNINSPECTED") {
+    return {
+      status: "NOT_EVALUATED",
+      reason: "Roll is uninspected grey cloth. Not evaluated for saleability.",
+    };
+  }
+
+  if (disposition === "HOLD") {
+    return {
+      status: "NOT_ELIGIBLE",
+      reason: "Quality disposition is HOLD. Fabric cannot be released.",
+    };
+  }
+
+  if (disposition === "REJECT") {
+    return {
+      status: "NOT_ELIGIBLE",
+      reason: "Quality disposition is REJECT. Fabric is non-saleable.",
+    };
+  }
+
+  if (disposition === "REWORK") {
+    return {
+      status: "NOT_ELIGIBLE",
+      reason: "Quality disposition is REWORK. Re-processing required before release.",
+    };
+  }
+
+  if (disposition === "PROCESS_REQUIRED") {
+    return {
+      status: "NOT_ELIGIBLE",
+      reason: "Next process routing required before saleability evaluation.",
+    };
+  }
+
+  if (grade === "UNASSIGNED") {
+    return {
+      status: "NOT_EVALUATED",
+      reason: "Grade is unassigned. Saleability not evaluated.",
+    };
+  }
+
+  if (grade === "A") {
+    if (!hasSaleabilityRule) {
+      return {
+        status: "REVIEW_REQUIRED",
+        reason: "Grade A manually assigned but saleability rules are not configured. Commercial approval required.",
+      };
+    }
+    return {
+      status: "ELIGIBLE",
+      reason: "Grade A approved and meets configured saleability criteria.",
+    };
+  }
+
+  if (grade === "B" || grade === "C") {
+    return {
+      status: "REVIEW_REQUIRED",
+      reason: `Grade ${grade} requires commercial approval/clearance before dispatch.`,
+    };
+  }
+
+  return {
+    status: "NOT_EVALUATED",
+    reason: "Saleability evaluation pending.",
+  };
+}
+
 /**
  * Service Layer for SCKT Production Planning Phase 1, 2, 3, 3B, 4A & 4B.
  * Connects Sales Order -> Production Order -> Cost Sheet -> Material Requirement -> FIFO Allocation -> Revision Delta -> Warp/Beam & Weft Job-Card Planning -> Release Readiness & Execution Preparation -> Yarn Issue & Return Execution Simulation.
@@ -6370,6 +6666,962 @@ export const ProductionPlanningService = {
     this.clearDailyProductionEntries(draftMB.id);
     this.clearJobCardReceiveTransactions(draftMB.id);
     inMemoryJobCardDrafts.delete(orderM.id);
+
+    return results;
+  },
+
+  // =========================================================================
+  // PHASE 5B / 5C QUALITY & PROCESS ROUTING SERVICE METHODS
+  // -------------------------------------------------------------------------
+  // ARCHITECTURAL AUTHORITY BOUNDARY NOTE:
+  // The legacy /quality/inspection workflow and its hard-coded 4-point system
+  // grade thresholds are non-authoritative for Phase 5C process routing.
+  // Authoritative production roll quality, grade planning, and routing disposition
+  // are governed strictly by the Phase 5B / 5C Production Planning & Quality models.
+  // =========================================================================
+
+  getRollInspectionHistory(rollDraftId: string): FabricInspectionDraft[] {
+    return inMemoryFabricInspections.get(rollDraftId) ?? [];
+  },
+
+  getLatestRollInspection(rollDraftId: string): FabricInspectionDraft | null {
+    const list = this.getRollInspectionHistory(rollDraftId);
+    return list.length > 0 ? list[list.length - 1] ?? null : null;
+  },
+
+  saveFabricInspectionSimulation(params: {
+    roll: FabricRollDraft;
+    order: ProductionOrder;
+    jobCard?: JobCardDraft | null | undefined;
+    inspectedQtyMetre: number;
+    inspectionDate?: string | undefined;
+    inspectorName?: string | undefined;
+    inspectionMethod?: string | undefined;
+    expectedWidthInch?: number | undefined;
+    measuredWidthInch?: number | undefined;
+    defectLines?: FabricDefectLine[] | undefined;
+    manualGrade?: FabricGrade | undefined;
+    gradeReason?: string | undefined;
+    disposition?: FabricDisposition | undefined;
+    dispositionReason?: string | undefined;
+    remark?: string | undefined;
+    hasSaleabilityRule?: boolean | undefined;
+  }): {
+    success: boolean;
+    inspection?: FabricInspectionDraft | undefined;
+    error?: string | undefined;
+  } {
+    const {
+      roll,
+      order,
+      jobCard,
+      inspectedQtyMetre,
+      inspectionDate = new Date().toISOString().split("T")[0]!,
+      inspectorName,
+      inspectionMethod,
+      expectedWidthInch,
+      measuredWidthInch,
+      defectLines = [],
+      manualGrade,
+      gradeReason,
+      disposition,
+      dispositionReason,
+      remark,
+      hasSaleabilityRule,
+    } = params;
+
+    const qtyVal = validateInspectionQuantity(inspectedQtyMetre, roll.qtyMetre);
+    if (!qtyVal.valid) {
+      return { success: false, ...(qtyVal.error ? { error: qtyVal.error } : {}) };
+    }
+
+    // Step 9: If defect type is 'other', remark is required
+    for (const d of defectLines) {
+      if (d.defectType === "other" && (!d.remark || !d.remark.trim())) {
+        return {
+          success: false,
+          error: "Remark is required for defects of type 'Other'.",
+        };
+      }
+    }
+
+    const existingHistory = this.getRollInspectionHistory(roll.id);
+    const inspRef = `INSP-DRAFT-${String(existingHistory.length + 1).padStart(3, "0")}`;
+    const inspId = `insp-${roll.id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+    const remainingUninspectedQtyMetre = calculateUninspectedQty(inspectedQtyMetre, roll.qtyMetre);
+    const inspectionCoveragePercent = calculateInspectionCoverage(inspectedQtyMetre, roll.qtyMetre);
+    const inspectionStatus = deriveInspectionStatus(inspectedQtyMetre, roll.qtyMetre);
+    const defectCount = countDefects(defectLines);
+
+    // Step 13, 52: Width tolerance check
+    let widthDifferenceInch: number | undefined = undefined;
+    let widthStatus: "OK" | "WIDTH_REVIEW_REQUIRED" | "NOT_CONFIGURED" | undefined = undefined;
+    if (measuredWidthInch !== undefined) {
+      if (expectedWidthInch !== undefined) {
+        widthDifferenceInch = roundQty(measuredWidthInch - expectedWidthInch);
+        if (Math.abs(widthDifferenceInch) > 0.001) {
+          widthStatus = "WIDTH_REVIEW_REQUIRED";
+        } else {
+          widthStatus = "OK";
+        }
+      } else {
+        widthStatus = "NOT_CONFIGURED";
+      }
+    }
+
+    // Step 15, 16: Grade model
+    // Grade = UNASSIGNED -> Grade Source = UNASSIGNED
+    // Grade = A / B / C / REJECT selected manually -> Grade Source = MANUAL
+    const isManualGrade = Boolean(manualGrade && manualGrade !== "UNASSIGNED");
+    const proposedGrade: FabricGrade = isManualGrade && manualGrade ? manualGrade : "UNASSIGNED";
+    const gradeSource: GradeSource = isManualGrade ? "MANUAL" : "UNASSIGNED";
+
+    // Step 18: Disposition model
+    const currentDisposition: FabricDisposition | "NOT_SET" = disposition || "NOT_SET";
+    const processRouting =
+      currentDisposition === "PROCESS_REQUIRED"
+        ? "PENDING / PROCESS ROUTING REQUIRED"
+        : undefined;
+
+    // Step 19, 20: Saleability preview
+    const saleability = deriveSaleabilityPreview({
+      inspectionStatus,
+      grade: proposedGrade,
+      disposition: currentDisposition,
+      hasSaleabilityRule,
+    });
+
+    const resolvedJobCard = jobCard ??
+      this.getJobCardDraftsForOrder(order.id).find((jc: JobCardDraft) => jc.id === roll.jobCardId);
+
+    const inspectionDraft: FabricInspectionDraft = {
+      id: inspId,
+      inspectionRef: inspRef,
+      rollDraftId: roll.id,
+      temporaryRollNo: roll.temporaryRollNo,
+      receiveDraftId: roll.receiveDraftId,
+      jobCardDraftId: roll.jobCardId,
+      jobCardNo: resolvedJobCard?.draftCardNo ?? roll.jobCardId,
+      ...(resolvedJobCard?.loomId ? { loomId: resolvedJobCard.loomId } : {}),
+      ...(resolvedJobCard?.loomNo ? { loomNo: resolvedJobCard.loomNo } : {}),
+      ...(resolvedJobCard?.beamNo ? { beamNo: resolvedJobCard.beamNo } : {}),
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      ...(order.sales_order_id ? { salesOrderId: order.sales_order_id } : resolvedJobCard?.salesOrderNo ? { salesOrderNo: resolvedJobCard.salesOrderNo } : {}),
+      ...(order.sales_order_no ? { salesOrderNo: order.sales_order_no } : resolvedJobCard?.salesOrderNo ? { salesOrderNo: resolvedJobCard.salesOrderNo } : {}),
+      ...(order.party_name ? { customerName: order.party_name } : resolvedJobCard?.customerName ? { customerName: resolvedJobCard.customerName } : {}),
+      ...(order.design_no ? { designNo: order.design_no } : resolvedJobCard?.designNo ? { designNo: resolvedJobCard.designNo } : {}),
+      rollQtyMetre: roll.qtyMetre,
+      inspectedQtyMetre: roundQty(inspectedQtyMetre),
+      remainingUninspectedQtyMetre,
+      inspectionCoveragePercent,
+      ...(expectedWidthInch !== undefined ? { expectedWidthInch } : {}),
+      ...(measuredWidthInch !== undefined ? { measuredWidthInch } : {}),
+      ...(widthDifferenceInch !== undefined ? { widthDifferenceInch } : {}),
+      ...(widthStatus ? { widthStatus } : {}),
+      defectLines,
+      defectCount,
+      inspectionStatus,
+      proposedGrade,
+      gradeSource,
+      ...(gradeReason ? { gradeReason } : {}),
+      disposition: currentDisposition,
+      ...(dispositionReason ? { dispositionReason } : {}),
+      saleabilityPreview: saleability.status,
+      saleabilityReason: saleability.reason,
+      ...(processRouting ? { processRouting } : {}),
+      inspectionDate,
+      ...(inspectorName ? { inspectorName } : {}),
+      ...(inspectionMethod ? { inspectionMethod } : {}),
+      ...(remark ? { remark } : {}),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedHistory = [...existingHistory, inspectionDraft];
+    inMemoryFabricInspections.set(roll.id, updatedHistory);
+
+    return { success: true, inspection: inspectionDraft };
+  },
+
+  createQualityRevisionSimulation(params: {
+    roll: FabricRollDraft;
+    order: ProductionOrder;
+    jobCard?: JobCardDraft | null | undefined;
+    revisedGrade: FabricGrade;
+    revisionReason: string;
+    revisedDisposition?: FabricDisposition | undefined;
+    revisedDispositionReason?: string | undefined;
+    inspectedQtyMetre?: number | undefined;
+    defectLines?: FabricDefectLine[] | undefined;
+    inspectionDate?: string | undefined;
+    inspectorName?: string | undefined;
+    inspectionMethod?: string | undefined;
+    measuredWidthInch?: number | undefined;
+    remark?: string | undefined;
+    hasSaleabilityRule?: boolean | undefined;
+  }): {
+    success: boolean;
+    inspection?: FabricInspectionDraft | undefined;
+    revisionCount?: number | undefined;
+    error?: string | undefined;
+  } {
+    const {
+      roll,
+      order,
+      jobCard,
+      revisedGrade,
+      revisionReason,
+      revisedDisposition,
+      revisedDispositionReason,
+      inspectedQtyMetre,
+      defectLines,
+      inspectionDate,
+      inspectorName,
+      inspectionMethod,
+      measuredWidthInch,
+      remark,
+      hasSaleabilityRule,
+    } = params;
+
+    const existingHistory = this.getRollInspectionHistory(roll.id);
+    const previous = existingHistory.length > 0 ? existingHistory[existingHistory.length - 1] : undefined;
+
+    const qty = inspectedQtyMetre !== undefined ? inspectedQtyMetre : previous ? previous.inspectedQtyMetre : roll.qtyMetre;
+    const defects = defectLines !== undefined ? defectLines : previous ? previous.defectLines : [];
+    const disp = revisedDisposition !== undefined ? revisedDisposition : previous && previous.disposition !== "NOT_SET" ? previous.disposition : "NOT_SET";
+
+    const baseResult = this.saveFabricInspectionSimulation({
+      roll,
+      order,
+      jobCard,
+      inspectedQtyMetre: qty,
+      defectLines: defects,
+      manualGrade: revisedGrade,
+      gradeReason: revisionReason,
+      disposition: disp !== "NOT_SET" ? disp : undefined,
+      dispositionReason: revisedDispositionReason,
+      inspectionDate,
+      inspectorName,
+      inspectionMethod,
+      measuredWidthInch,
+      remark,
+      hasSaleabilityRule,
+    });
+
+    if (!baseResult.success || !baseResult.inspection) {
+      return baseResult;
+    }
+
+    // Mark as reinspection / revision
+    const insp = baseResult.inspection;
+    insp.isReinspection = true;
+    if (previous) {
+      insp.previousInspectionRef = previous.inspectionRef;
+      insp.previousGrade = previous.proposedGrade;
+    }
+
+    const updatedHistory = this.getRollInspectionHistory(roll.id);
+    const revisionCount = Math.max(0, updatedHistory.length - 1);
+
+    return { success: true, inspection: insp, revisionCount };
+  },
+
+  getRollQualitySummary(roll: FabricRollDraft): RollQualitySummary {
+    const history = this.getRollInspectionHistory(roll.id);
+    const latest = history.length > 0 ? history[history.length - 1] : undefined;
+
+    if (!latest) {
+      const saleability = deriveSaleabilityPreview({
+        inspectionStatus: "UNINSPECTED",
+        grade: "UNASSIGNED",
+        disposition: "NOT_SET",
+      });
+
+      return {
+        rollDraftId: roll.id,
+        temporaryRollNo: roll.temporaryRollNo,
+        rollQtyMetre: roll.qtyMetre,
+        inspectedQtyMetre: 0,
+        remainingUninspectedQtyMetre: roll.qtyMetre,
+        inspectionCoveragePercent: 0,
+        inspectionStatus: "UNINSPECTED",
+        defectCount: 0,
+        proposedGrade: "UNASSIGNED",
+        gradeSource: "UNASSIGNED",
+        disposition: "NOT_SET",
+        saleabilityPreview: saleability.status,
+        saleabilityReason: saleability.reason,
+        revisionCount: 0,
+        inspectionHistory: [],
+      };
+    }
+
+    return {
+      rollDraftId: roll.id,
+      temporaryRollNo: roll.temporaryRollNo,
+      rollQtyMetre: roll.qtyMetre,
+      inspectedQtyMetre: latest.inspectedQtyMetre,
+      remainingUninspectedQtyMetre: latest.remainingUninspectedQtyMetre,
+      inspectionCoveragePercent: latest.inspectionCoveragePercent,
+      inspectionStatus: latest.inspectionStatus,
+      defectCount: latest.defectCount,
+      proposedGrade: latest.proposedGrade,
+      gradeSource: latest.gradeSource,
+      ...(latest.gradeReason ? { gradeReason: latest.gradeReason } : {}),
+      disposition: latest.disposition,
+      ...(latest.dispositionReason ? { dispositionReason: latest.dispositionReason } : {}),
+      saleabilityPreview: latest.saleabilityPreview,
+      ...(latest.saleabilityReason ? { saleabilityReason: latest.saleabilityReason } : {}),
+      revisionCount: Math.max(0, history.length - 1),
+      latestInspection: latest,
+      inspectionHistory: history,
+    };
+  },
+
+  getJobCardQualitySummary(draft: JobCardDraft, order: ProductionOrder): JobCardQualitySummary {
+    const receiveSummary = this.getJobCardReceiveSummary(draft, order);
+    const rolls = receiveSummary.allRollDrafts;
+    const rollsSummary = rolls.map((r) => this.getRollQualitySummary(r));
+
+    let uninspectedRollsCount = 0;
+    let inProgressRollsCount = 0;
+    let inspectedRollsCount = 0;
+    let holdRollsCount = 0;
+    let reworkRollsCount = 0;
+    let rejectedRollsCount = 0;
+    let acceptedRollsCount = 0;
+
+    const gradeDistribution: Record<FabricGrade, number> = {
+      A: 0,
+      B: 0,
+      C: 0,
+      REJECT: 0,
+      UNASSIGNED: 0,
+    };
+
+    for (const rs of rollsSummary) {
+      if (rs.inspectionStatus === "UNINSPECTED") uninspectedRollsCount++;
+      else if (rs.inspectionStatus === "INSPECTION_IN_PROGRESS") inProgressRollsCount++;
+      else if (rs.inspectionStatus === "INSPECTED") inspectedRollsCount++;
+
+      if (rs.disposition === "HOLD") holdRollsCount++;
+      else if (rs.disposition === "REWORK") reworkRollsCount++;
+      else if (rs.disposition === "REJECT") rejectedRollsCount++;
+      else if (rs.disposition === "ACCEPTED") acceptedRollsCount++;
+
+      gradeDistribution[rs.proposedGrade] = (gradeDistribution[rs.proposedGrade] || 0) + 1;
+    }
+
+    return {
+      jobCardDraftId: draft.id,
+      jobCardNo: draft.draftCardNo,
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      totalRollsCount: rolls.length,
+      uninspectedRollsCount,
+      inProgressRollsCount,
+      inspectedRollsCount,
+      holdRollsCount,
+      reworkRollsCount,
+      rejectedRollsCount,
+      acceptedRollsCount,
+      gradeDistribution,
+      rollsSummary,
+    };
+  },
+
+  getProductionOrderQualitySummary(order: ProductionOrder): ProductionOrderQualitySummary {
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    const jcQualitySummaries = drafts.map((d) => this.getJobCardQualitySummary(d, order));
+
+    const totalRollsCount = sumQty(jcQualitySummaries.map((s) => s.totalRollsCount));
+    const allRollSummaries = jcQualitySummaries.flatMap((s) => s.rollsSummary);
+
+    const receivedFabricQtyMetre = roundQty(sumQty(allRollSummaries.map((r) => r.rollQtyMetre)));
+    const inspectedQtyMetre = roundQty(sumQty(allRollSummaries.map((r) => r.inspectedQtyMetre)));
+    const uninspectedQtyMetre = roundQty(sumQty(allRollSummaries.map((r) => r.remainingUninspectedQtyMetre)));
+
+    const acceptedQtyMetre = roundQty(sumQty(allRollSummaries.filter((r) => r.disposition === "ACCEPTED").map((r) => r.rollQtyMetre)));
+    const holdQtyMetre = roundQty(sumQty(allRollSummaries.filter((r) => r.disposition === "HOLD").map((r) => r.rollQtyMetre)));
+    const reworkQtyMetre = roundQty(sumQty(allRollSummaries.filter((r) => r.disposition === "REWORK").map((r) => r.rollQtyMetre)));
+    const rejectedQtyMetre = roundQty(sumQty(allRollSummaries.filter((r) => r.disposition === "REJECT").map((r) => r.rollQtyMetre)));
+
+    const exceptions = this.getQualityExceptions(order);
+
+    return {
+      productionOrderId: order.id,
+      productionOrderNo: order.order_no,
+      receivedFabricQtyMetre,
+      totalRollsCount,
+      inspectedQtyMetre,
+      uninspectedQtyMetre,
+      acceptedQtyMetre,
+      holdQtyMetre,
+      reworkQtyMetre,
+      rejectedQtyMetre,
+      jobCardsQualitySummary: jcQualitySummaries,
+      exceptionsCount: exceptions.totalExceptions,
+    };
+  },
+
+  getQualityExceptions(order: ProductionOrder): QualityExceptionsSummary {
+    const drafts = this.getJobCardDraftsForOrder(order.id);
+    const allRolls = drafts.flatMap((d) => this.getJobCardReceiveSummary(d, order).allRollDrafts);
+    const summaries = allRolls.map((r) => this.getRollQualitySummary(r));
+
+    let uninspectedRollsCount = 0;
+    let partialInspectionsCount = 0;
+    let gradeUnassignedCount = 0;
+    let widthReviewRequiredCount = 0;
+    let holdCount = 0;
+    let reworkCount = 0;
+    let rejectCount = 0;
+    let saleabilityReviewRequiredCount = 0;
+
+    for (const s of summaries) {
+      if (s.inspectionStatus === "UNINSPECTED") uninspectedRollsCount++;
+      if (s.inspectionStatus === "INSPECTION_IN_PROGRESS") partialInspectionsCount++;
+      if (s.inspectionStatus === "INSPECTED" && s.proposedGrade === "UNASSIGNED") gradeUnassignedCount++;
+      if (s.latestInspection?.widthStatus === "WIDTH_REVIEW_REQUIRED") widthReviewRequiredCount++;
+      if (s.disposition === "HOLD") holdCount++;
+      if (s.disposition === "REWORK") reworkCount++;
+      if (s.disposition === "REJECT") rejectCount++;
+      if (s.saleabilityPreview === "REVIEW_REQUIRED") saleabilityReviewRequiredCount++;
+    }
+
+    const totalExceptions =
+      uninspectedRollsCount +
+      partialInspectionsCount +
+      gradeUnassignedCount +
+      widthReviewRequiredCount +
+      holdCount +
+      reworkCount +
+      rejectCount +
+      saleabilityReviewRequiredCount;
+
+    return {
+      uninspectedRollsCount,
+      partialInspectionsCount,
+      gradeUnassignedCount,
+      widthReviewRequiredCount,
+      holdCount,
+      reworkCount,
+      rejectCount,
+      saleabilityReviewRequiredCount,
+      totalExceptions,
+    };
+  },
+
+  clearFabricInspections(rollDraftId?: string): void {
+    if (rollDraftId) {
+      inMemoryFabricInspections.delete(rollDraftId);
+    } else {
+      inMemoryFabricInspections.clear();
+    }
+  },
+
+  // =========================================================================
+  // AUTOMATED TEST SUITE FOR PHASE 5B (Test Cases A through M)
+  // =========================================================================
+
+  runPhase5BVerificationTests(): Record<string, { pass: boolean; details: string }> {
+    const results: Record<string, { pass: boolean; details: string }> = {};
+
+    const mockOrder5B: ProductionOrder = {
+      id: "po-test-5b-runner",
+      order_no: "PO-5B-TEST",
+      production_type: "CUSTOMER ORDER",
+      cost_sheet_id: "cs-sample-001",
+      design_no: "D-015",
+      party_name: "Labdhi Sarees",
+      quality: "Silk",
+      qty_metre: 2000,
+      delivery_date: "2026-10-15",
+      priority: "high",
+      status: "planned",
+      remarks: "",
+      created_at: new Date().toISOString(),
+    };
+
+    const mockRollBase: FabricRollDraft = {
+      id: "roll-5b-test-1",
+      receiveDraftId: "rcv-5b-01",
+      jobCardId: "jc-5b-01",
+      productionOrderId: mockOrder5B.id,
+      rollSequence: 1,
+      temporaryRollNo: "DRAFT-ROLL-001",
+      qtyMetre: 200,
+      grossWeightKg: 18.5,
+      netWeightKg: 18.0,
+      widthInch: 44,
+      inspectionStatus: "UNINSPECTED",
+      stockStatus: "DRAFT_GREY",
+      isSaleable: false,
+    };
+
+    // Clean initial state
+    this.clearFabricInspections();
+
+    // -------------------------------------------------------------
+    // Test Case A — Uninspected State (Step 47)
+    // New Roll: Qty 200 -> Inspection: UNINSPECTED, Grade: UNASSIGNED, Saleability: NOT_EVALUATED
+    // -------------------------------------------------------------
+    const summaryA = this.getRollQualitySummary(mockRollBase);
+    const isTestAPass =
+      summaryA.inspectionStatus === "UNINSPECTED" &&
+      summaryA.proposedGrade === "UNASSIGNED" &&
+      summaryA.saleabilityPreview === "NOT_EVALUATED" &&
+      summaryA.inspectedQtyMetre === 0 &&
+      summaryA.remainingUninspectedQtyMetre === 200;
+
+    results["Test A (Uninspected Roll: UNINSPECTED, UNASSIGNED, NOT_EVALUATED)"] = {
+      pass: isTestAPass,
+      details: isTestAPass
+        ? `Status: ${summaryA.inspectionStatus}, Grade: ${summaryA.proposedGrade}, Saleability: ${summaryA.saleabilityPreview}, Coverage: 0%`
+        : `Failed: status=${summaryA.inspectionStatus}, grade=${summaryA.proposedGrade}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case B — Full Inspection (Step 48)
+    // Roll: 200, Inspect: 200 -> INSPECTED, Coverage 100%, Remaining 0
+    // -------------------------------------------------------------
+    const rollB: FabricRollDraft = { ...mockRollBase, id: "roll-5b-b", temporaryRollNo: "DRAFT-ROLL-002" };
+    const resB = this.saveFabricInspectionSimulation({
+      roll: rollB,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+    });
+    const summaryB = this.getRollQualitySummary(rollB);
+    const isTestBPass =
+      resB.success &&
+      summaryB.inspectionStatus === "INSPECTED" &&
+      summaryB.inspectedQtyMetre === 200 &&
+      summaryB.remainingUninspectedQtyMetre === 0 &&
+      summaryB.inspectionCoveragePercent === 100;
+
+    results["Test B (Full Inspection: 200 / 200 MTR -> INSPECTED, Coverage 100%)"] = {
+      pass: isTestBPass,
+      details: isTestBPass
+        ? `Status: ${summaryB.inspectionStatus}, Coverage: ${summaryB.inspectionCoveragePercent}%, Remaining: ${summaryB.remainingUninspectedQtyMetre}m`
+        : `Failed: status=${summaryB.inspectionStatus}, coverage=${summaryB.inspectionCoveragePercent}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case C — Partial Inspection (Step 49)
+    // Roll: 200, Inspect: 100 -> INSPECTION_IN_PROGRESS, Remaining: 100
+    // -------------------------------------------------------------
+    const rollC: FabricRollDraft = { ...mockRollBase, id: "roll-5b-c", temporaryRollNo: "DRAFT-ROLL-003" };
+    const resC = this.saveFabricInspectionSimulation({
+      roll: rollC,
+      order: mockOrder5B,
+      inspectedQtyMetre: 100,
+    });
+    const summaryC = this.getRollQualitySummary(rollC);
+    const isTestCPass =
+      resC.success &&
+      summaryC.inspectionStatus === "INSPECTION_IN_PROGRESS" &&
+      summaryC.inspectedQtyMetre === 100 &&
+      summaryC.remainingUninspectedQtyMetre === 100 &&
+      summaryC.inspectionCoveragePercent === 50;
+
+    results["Test C (Partial Inspection: 100 / 200 MTR -> INSPECTION_IN_PROGRESS, Coverage 50%)"] = {
+      pass: isTestCPass,
+      details: isTestCPass
+        ? `Status: ${summaryC.inspectionStatus}, Remaining: ${summaryC.remainingUninspectedQtyMetre}m, Coverage: ${summaryC.inspectionCoveragePercent}%`
+        : `Failed: status=${summaryC.inspectionStatus}, remaining=${summaryC.remainingUninspectedQtyMetre}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case D — Inspect Above Roll Blocked (Step 50)
+    // Roll: 200, Attempt: 220 -> BLOCK
+    // -------------------------------------------------------------
+    const rollD: FabricRollDraft = { ...mockRollBase, id: "roll-5b-d", temporaryRollNo: "DRAFT-ROLL-004" };
+    const resD = this.saveFabricInspectionSimulation({
+      roll: rollD,
+      order: mockOrder5B,
+      inspectedQtyMetre: 220,
+    });
+    const isTestDPass =
+      !resD.success &&
+      !!resD.error &&
+      resD.error.includes("exceeds roll quantity (200.000 MTR) by 20.000 MTR");
+
+    results["Test D (Inspect Above Roll Blocked: 220 MTR vs 200 MTR Roll)"] = {
+      pass: isTestDPass,
+      details: isTestDPass
+        ? `Correctly blocked: "${resD.error}"`
+        : `Failed: success=${resD.success}, error="${resD.error}"`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case E — Defect Capture Without Invented Formulas (Step 51)
+    // Add 3 defects -> Defect Count: 3, Grade: UNASSIGNED (no auto grading)
+    // -------------------------------------------------------------
+    const rollE: FabricRollDraft = { ...mockRollBase, id: "roll-5b-e", temporaryRollNo: "DRAFT-ROLL-005" };
+    const resE = this.saveFabricInspectionSimulation({
+      roll: rollE,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      defectLines: [
+        { id: "d-1", defectType: "broken_end", count: 1, positionMetre: 25 },
+        { id: "d-2", defectType: "oil_stain", count: 1, positionMetre: 80, severity: "MINOR" },
+        { id: "d-3", defectType: "weft_slub", count: 1, positionMetre: 140 },
+      ],
+    });
+    const summaryE = this.getRollQualitySummary(rollE);
+    const isTestEPass =
+      resE.success &&
+      summaryE.defectCount === 3 &&
+      summaryE.proposedGrade === "UNASSIGNED" &&
+      summaryE.gradeSource === "UNASSIGNED";
+
+    results["Test E (Defect Capture: 3 Defects -> Count 3, Grade UNASSIGNED Without Formula)"] = {
+      pass: isTestEPass,
+      details: isTestEPass
+        ? `Captured 3 defects. Automatic Grade: NOT CONFIGURED. Grade: ${summaryE.proposedGrade}, Source: ${summaryE.gradeSource}`
+        : `Failed: defectCount=${summaryE.defectCount}, grade=${summaryE.proposedGrade}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case F — Width Without Tolerance (Step 52)
+    // Expected: 44", Measured: 43" -> WIDTH REVIEW REQUIRED, No Auto Rejection
+    // -------------------------------------------------------------
+    const rollF: FabricRollDraft = { ...mockRollBase, id: "roll-5b-f", temporaryRollNo: "DRAFT-ROLL-006" };
+    const resF = this.saveFabricInspectionSimulation({
+      roll: rollF,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      expectedWidthInch: 44,
+      measuredWidthInch: 43,
+    });
+    const inspF = resF.inspection;
+    const isTestFPass =
+      resF.success &&
+      inspF?.widthStatus === "WIDTH_REVIEW_REQUIRED" &&
+      inspF.widthDifferenceInch === -1;
+
+    results["Test F (Width Without Tolerance: 43\" vs 44\" -> WIDTH REVIEW REQUIRED)"] = {
+      pass: isTestFPass,
+      details: isTestFPass
+        ? `Width Status: ${inspF?.widthStatus}, Difference: ${inspF?.widthDifferenceInch}\". No automatic rejection.`
+        : `Failed: status=${inspF?.widthStatus}, diff=${inspF?.widthDifferenceInch}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case G — Manual Grade Planning (Step 53)
+    // Full inspection. Manual Grade: B (Reason: "Minor slubs in body")
+    // -------------------------------------------------------------
+    const rollG: FabricRollDraft = { ...mockRollBase, id: "roll-5b-g", temporaryRollNo: "DRAFT-ROLL-007" };
+    const resG = this.saveFabricInspectionSimulation({
+      roll: rollG,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      manualGrade: "B",
+      gradeReason: "Minor slubs in body",
+    });
+    const summaryG = this.getRollQualitySummary(rollG);
+    const isTestGPass =
+      resG.success &&
+      summaryG.proposedGrade === "B" &&
+      summaryG.gradeSource === "MANUAL" &&
+      summaryG.gradeReason === "Minor slubs in body";
+
+    results["Test G (Manual Grade Planning: Grade B, Source MANUAL, Reason Recorded)"] = {
+      pass: isTestGPass,
+      details: isTestGPass
+        ? `Grade: ${summaryG.proposedGrade}, Source: ${summaryG.gradeSource}, Reason: "${summaryG.gradeReason}"`
+        : `Failed: grade=${summaryG.proposedGrade}, source=${summaryG.gradeSource}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case H — Disposition HOLD (Step 54)
+    // Disposition: HOLD -> Saleability: NOT_ELIGIBLE
+    // -------------------------------------------------------------
+    const rollH: FabricRollDraft = { ...mockRollBase, id: "roll-5b-h", temporaryRollNo: "DRAFT-ROLL-008" };
+    const resH = this.saveFabricInspectionSimulation({
+      roll: rollH,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      manualGrade: "B",
+      disposition: "HOLD",
+      dispositionReason: "Pending customer shade review",
+    });
+    const summaryH = this.getRollQualitySummary(rollH);
+    const isTestHPass =
+      resH.success &&
+      summaryH.disposition === "HOLD" &&
+      summaryH.saleabilityPreview === "NOT_ELIGIBLE";
+
+    results["Test H (Disposition HOLD: Saleability NOT_ELIGIBLE, No Stock Release)"] = {
+      pass: isTestHPass,
+      details: isTestHPass
+        ? `Disposition: ${summaryH.disposition}, Saleability: ${summaryH.saleabilityPreview} ("${summaryH.saleabilityReason}")`
+        : `Failed: disposition=${summaryH.disposition}, saleability=${summaryH.saleabilityPreview}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case I — Disposition REWORK (Step 55)
+    // Disposition: REWORK -> Saleability: NOT_ELIGIBLE, Process: PENDING
+    // -------------------------------------------------------------
+    const rollI: FabricRollDraft = { ...mockRollBase, id: "roll-5b-i", temporaryRollNo: "DRAFT-ROLL-009" };
+    const resI = this.saveFabricInspectionSimulation({
+      roll: rollI,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      disposition: "REWORK",
+      dispositionReason: "Oil stain mending required",
+    });
+    const summaryI = this.getRollQualitySummary(rollI);
+    const isTestIPass =
+      resI.success &&
+      summaryI.disposition === "REWORK" &&
+      summaryI.saleabilityPreview === "NOT_ELIGIBLE" &&
+      Boolean(resI.inspection?.saleabilityReason?.includes("Re-processing required"));
+
+    results["Test I (Disposition REWORK: Saleability NOT_ELIGIBLE, Re-processing Pending)"] = {
+      pass: isTestIPass,
+      details: isTestIPass
+        ? `Disposition: ${summaryI.disposition}, Saleability: ${summaryI.saleabilityPreview}, Process Routing: Pending`
+        : `Failed: disposition=${summaryI.disposition}, saleability=${summaryI.saleabilityPreview}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case J — Disposition REJECT (Step 56)
+    // Disposition: REJECT -> Saleability: NOT_ELIGIBLE
+    // -------------------------------------------------------------
+    const rollJ: FabricRollDraft = { ...mockRollBase, id: "roll-5b-j", temporaryRollNo: "DRAFT-ROLL-010" };
+    const resJ = this.saveFabricInspectionSimulation({
+      roll: rollJ,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      manualGrade: "REJECT",
+      disposition: "REJECT",
+      dispositionReason: "Major reed marks across 50m",
+    });
+    const summaryJ = this.getRollQualitySummary(rollJ);
+    const isTestJPass =
+      resJ.success &&
+      summaryJ.disposition === "REJECT" &&
+      summaryJ.saleabilityPreview === "NOT_ELIGIBLE";
+
+    results["Test J (Disposition REJECT: Saleability NOT_ELIGIBLE)"] = {
+      pass: isTestJPass,
+      details: isTestJPass
+        ? `Disposition: ${summaryJ.disposition}, Grade: ${summaryJ.proposedGrade}, Saleability: ${summaryJ.saleabilityPreview}`
+        : `Failed: disposition=${summaryJ.disposition}, saleability=${summaryJ.saleabilityPreview}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case K — Grade A Without Saleability Rule (Step 57)
+    // Grade: A, Saleability Rule: NOT CONFIGURED -> REVIEW_REQUIRED
+    // -------------------------------------------------------------
+    const rollK: FabricRollDraft = { ...mockRollBase, id: "roll-5b-k", temporaryRollNo: "DRAFT-ROLL-011" };
+    const resK = this.saveFabricInspectionSimulation({
+      roll: rollK,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      manualGrade: "A",
+      disposition: "ACCEPTED",
+      hasSaleabilityRule: false, // Rule not configured
+    });
+    const summaryK = this.getRollQualitySummary(rollK);
+    const isTestKPass =
+      resK.success &&
+      summaryK.proposedGrade === "A" &&
+      summaryK.saleabilityPreview === "REVIEW_REQUIRED";
+
+    results["Test K (Grade A Without Saleability Rule -> REVIEW_REQUIRED, Not Auto-Saleable)"] = {
+      pass: isTestKPass,
+      details: isTestKPass
+        ? `Grade: ${summaryK.proposedGrade}, Saleability: ${summaryK.saleabilityPreview} ("${summaryK.saleabilityReason}"). Never defaults to saleable without rules.`
+        : `Failed: grade=${summaryK.proposedGrade}, saleability=${summaryK.saleabilityPreview}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case L — Quality Revision Preserves History (Step 58)
+    // Initial: Grade B, HOLD -> Revision: Grade A, ACCEPTED
+    // Previous Grade B remains in history
+    // -------------------------------------------------------------
+    const rollL: FabricRollDraft = { ...mockRollBase, id: "roll-5b-l", temporaryRollNo: "DRAFT-ROLL-012" };
+    this.saveFabricInspectionSimulation({
+      roll: rollL,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      manualGrade: "B",
+      disposition: "HOLD",
+      dispositionReason: "Initial inspection hold for shade test",
+    });
+
+    const revL = this.createQualityRevisionSimulation({
+      roll: rollL,
+      order: mockOrder5B,
+      revisedGrade: "A",
+      revisionReason: "Reinspection after shade clearance",
+      revisedDisposition: "ACCEPTED",
+    });
+
+    const summaryL = this.getRollQualitySummary(rollL);
+    const isTestLPass =
+      revL.success &&
+      summaryL.revisionCount === 1 &&
+      summaryL.inspectionHistory.length === 2 &&
+      summaryL.inspectionHistory[0]?.proposedGrade === "B" &&
+      summaryL.inspectionHistory[1]?.proposedGrade === "A" &&
+      summaryL.inspectionHistory[1]?.previousGrade === "B" &&
+      summaryL.inspectionHistory[1]?.isReinspection === true;
+
+    results["Test L (Quality Revision: B -> A Preserves Historical Decision)"] = {
+      pass: isTestLPass,
+      details: isTestLPass
+        ? `Revisions: ${summaryL.revisionCount}, Current: ${summaryL.proposedGrade}, Initial: ${summaryL.inspectionHistory[0]?.proposedGrade}, Prev Ref: ${summaryL.latestInspection?.previousInspectionRef}`
+        : `Failed: revisions=${summaryL.revisionCount}, historyLength=${summaryL.inspectionHistory.length}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case M — Job Card Quality Rollup (Step 59)
+    // 4 Rolls: 2 Inspected, 1 In Progress, 1 Uninspected
+    // -------------------------------------------------------------
+    const draftM: JobCardDraft = {
+      id: "jc-5b-rollup",
+      draftCardNo: "JC-5B-M",
+      loomPlanId: "lp-5b-m",
+      productionOrderId: mockOrder5B.id,
+      productionOrderNo: mockOrder5B.order_no,
+      salesOrderNo: "SO/5B",
+      customerName: "Labdhi Sarees",
+      itemCode: "SL02-SALSA",
+      designNo: "D-015",
+      quality: "Silk",
+      loomId: "lm-01",
+      loomNo: "LOOM-01",
+      loomType: "Jacquard",
+      pannaInch: 54,
+      plannedQtyMetre: 800,
+      unit: "MTR",
+      priority: "high",
+      deliveryDate: "2026-10-15",
+      costSheetNo: "CS-001",
+      warpReadiness: "WARP READY",
+      weftReadiness: "WEFT READY",
+      status: "READY",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.clearDailyProductionEntries(draftM.id);
+    this.clearJobCardReceiveTransactions(draftM.id);
+
+    this.createDailyProductionSimulation({
+      draft: draftM,
+      order: mockOrder5B,
+      productionDate: "2026-10-01",
+      qtyMetre: 800,
+    });
+
+    this.createJobCardReceiveSimulation({
+      draft: draftM,
+      order: mockOrder5B,
+      receiveDate: "2026-10-02",
+      receiveQtyMetre: 800,
+      rolls: [
+        { qtyMetre: 200 }, // roll 1
+        { qtyMetre: 200 }, // roll 2
+        { qtyMetre: 200 }, // roll 3
+        { qtyMetre: 200 }, // roll 4
+      ],
+    });
+
+    const rollsM = this.getJobCardReceiveSummary(draftM, mockOrder5B).allRollDrafts;
+    // Roll 1: fully inspected
+    if (rollsM[0]) {
+      this.saveFabricInspectionSimulation({
+        roll: rollsM[0],
+        order: mockOrder5B,
+        inspectedQtyMetre: 200,
+        manualGrade: "A",
+        disposition: "ACCEPTED",
+      });
+    }
+    // Roll 2: fully inspected
+    if (rollsM[1]) {
+      this.saveFabricInspectionSimulation({
+        roll: rollsM[1],
+        order: mockOrder5B,
+        inspectedQtyMetre: 200,
+        manualGrade: "B",
+        disposition: "HOLD",
+      });
+    }
+    // Roll 3: in progress (100 / 200)
+    if (rollsM[2]) {
+      this.saveFabricInspectionSimulation({
+        roll: rollsM[2],
+        order: mockOrder5B,
+        inspectedQtyMetre: 100,
+      });
+    }
+    // Roll 4: uninspected
+
+    const rollupM = this.getJobCardQualitySummary(draftM, mockOrder5B);
+    const isTestMPass =
+      rollupM.totalRollsCount === 4 &&
+      rollupM.inspectedRollsCount === 2 &&
+      rollupM.inProgressRollsCount === 1 &&
+      rollupM.uninspectedRollsCount === 1 &&
+      rollupM.holdRollsCount === 1 &&
+      rollupM.acceptedRollsCount === 1;
+
+    results["Test M (Job Card Quality Rollup: 4 Rolls -> 2 Inspected, 1 In Progress, 1 Uninspected)"] = {
+      pass: isTestMPass,
+      details: isTestMPass
+        ? `Total: ${rollupM.totalRollsCount}, Inspected: ${rollupM.inspectedRollsCount}, In Progress: ${rollupM.inProgressRollsCount}, Uninspected: ${rollupM.uninspectedRollsCount}, Hold: ${rollupM.holdRollsCount}`
+        : `Failed: total=${rollupM.totalRollsCount}, inspected=${rollupM.inspectedRollsCount}, inProgress=${rollupM.inProgressRollsCount}, uninspected=${rollupM.uninspectedRollsCount}`,
+    };
+
+    // -------------------------------------------------------------
+    // Test Case N — Explicit "UNASSIGNED" Grade Handling Regression (Pre-5C Fix)
+    // Grade = "UNASSIGNED" -> Grade Source = UNASSIGNED (NOT Treated as Manual)
+    // Grade = "A" (Manual) -> Grade Source = MANUAL
+    // -------------------------------------------------------------
+    const rollN1: FabricRollDraft = { ...mockRollBase, id: "roll-5b-n1", temporaryRollNo: "DRAFT-ROLL-013" };
+    const resN1 = this.saveFabricInspectionSimulation({
+      roll: rollN1,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      manualGrade: "UNASSIGNED",
+    });
+    const summaryN1 = this.getRollQualitySummary(rollN1);
+
+    const rollN2: FabricRollDraft = { ...mockRollBase, id: "roll-5b-n2", temporaryRollNo: "DRAFT-ROLL-014" };
+    const resN2 = this.saveFabricInspectionSimulation({
+      roll: rollN2,
+      order: mockOrder5B,
+      inspectedQtyMetre: 200,
+      manualGrade: "A",
+    });
+    const summaryN2 = this.getRollQualitySummary(rollN2);
+
+    const isTestNPass =
+      resN1.success &&
+      summaryN1.proposedGrade === "UNASSIGNED" &&
+      summaryN1.gradeSource === "UNASSIGNED" &&
+      resN2.success &&
+      summaryN2.proposedGrade === "A" &&
+      summaryN2.gradeSource === "MANUAL";
+
+    results["Test N (Grade Source: UNASSIGNED String Treated As UNASSIGNED, Not MANUAL)"] = {
+      pass: isTestNPass,
+      details: isTestNPass
+        ? `UNASSIGNED: Grade=${summaryN1.proposedGrade}, Source=${summaryN1.gradeSource}. Manual A: Grade=${summaryN2.proposedGrade}, Source=${summaryN2.gradeSource}. Regression test passed.`
+        : `Failed: N1(grade=${summaryN1.proposedGrade}, source=${summaryN1.gradeSource}), N2(grade=${summaryN2.proposedGrade}, source=${summaryN2.gradeSource})`,
+    };
+
+    // Cleanup test artifacts
+    this.clearFabricInspections();
+    this.clearDailyProductionEntries(draftM.id);
+    this.clearJobCardReceiveTransactions(draftM.id);
 
     return results;
   },

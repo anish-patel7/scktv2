@@ -48,6 +48,7 @@ import { FabricProcessReceiveService } from "@/services/fabric-process-receive.s
 import { FabricProcessRoutingService } from "@/services/fabric-process-routing.service";
 import type { ProductionOrder } from "@/lib/production-store";
 import { FabricPostProcessQualityDialog } from "./fabric-post-process-quality-dialog";
+import { FabricCommercialReleaseDialog } from "@/components/fabric-commercial-release-dialog";
 
 interface FabricPostProcessQualityWorkspaceProps {
   order?: ProductionOrder | null | undefined;
@@ -85,10 +86,18 @@ export function FabricPostProcessQualityWorkspace({
   const [inspectionFilter, setInspectionFilter] = useState<string>("ALL");
   const [reviewFilter, setReviewFilter] = useState<string>("ALL");
 
-  // Selection states for dialog
   const [selectedRollForQuality, setSelectedRollForQuality] = useState<FabricRollDraft | null>(null);
   const [selectedReinspectionFrom, setSelectedReinspectionFrom] = useState<FabricPostProcessInspection | null>(null);
   const [isQualityDialogOpen, setIsQualityDialogOpen] = useState<boolean>(false);
+
+  // Commercial Release Dialog state (Step 49)
+  const [selectedRollIdForCommercial, setSelectedRollIdForCommercial] = useState<string | null>(null);
+  const [isCommercialDialogOpen, setIsCommercialDialogOpen] = useState<boolean>(false);
+
+  const handleOpenCommercial = (rollNodeId: string) => {
+    setSelectedRollIdForCommercial(rollNodeId);
+    setIsCommercialDialogOpen(true);
+  };
 
   // Auto-register root nodes in genealogy
   useMemo(() => {
@@ -626,6 +635,16 @@ export function FabricPostProcessQualityWorkspace({
                                     <RefreshCw className="w-3 h-3 mr-1" />
                                     Reinspect
                                   </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenCommercial(node.id)}
+                                    className="h-6 text-[10px] px-2 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/40"
+                                    title="Review Commercial Release"
+                                  >
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Commercial
+                                  </Button>
                                 </>
                               ) : (
                                 <Button
@@ -640,16 +659,28 @@ export function FabricPostProcessQualityWorkspace({
                               )}
                             </>
                           ) : (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleOpenInspect(draft)}
-                              className="h-6 text-[10px] px-2 text-slate-500 hover:text-white"
-                              title="View Quality History"
-                            >
-                              <History className="w-3 h-3 mr-1" />
-                              History
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleOpenInspect(draft)}
+                                className="h-6 text-[10px] px-2 text-slate-500 hover:text-white"
+                                title="View Quality History"
+                              >
+                                <History className="w-3 h-3 mr-1" />
+                                History
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleOpenCommercial(node.id)}
+                                className="h-6 text-[10px] px-2 text-slate-500 hover:text-white"
+                                title="View Commercial History"
+                              >
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                Commercial
+                              </Button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -672,6 +703,20 @@ export function FabricPostProcessQualityWorkspace({
           jobCard={jobCards.find((jc) => jc.id === selectedRollForQuality.jobCardId)}
           targetReinspectionFrom={selectedReinspectionFrom}
           onSaved={() => {
+            onRefresh?.();
+          }}
+        />
+      )}
+
+      {/* Commercial Release Dialog Modal (Step 49) */}
+      {selectedRollIdForCommercial && (
+        <FabricCommercialReleaseDialog
+          open={isCommercialDialogOpen}
+          onOpenChange={setIsCommercialDialogOpen}
+          rollNodeIdOrIdentity={selectedRollIdForCommercial}
+          order={order}
+          jobCard={jobCards[0]}
+          onReleaseConfirmed={() => {
             onRefresh?.();
           }}
         />

@@ -66,6 +66,7 @@ import { FabricRollGenealogyWorkspace } from "@/components/fabric-roll-genealogy
 import { FabricPostProcessQualityWorkspace } from "@/components/fabric-post-process-quality-workspace";
 import { FabricPostProcessQualityDialog } from "@/components/fabric-post-process-quality-dialog";
 import { FabricPostProcessQualityService } from "@/services/fabric-post-process-quality.service";
+import { FabricCommercialReleaseWorkspace } from "@/components/fabric-commercial-release-workspace";
 
 interface FabricProcessRoutingWorkspaceProps {
   order?: ProductionOrder | null;
@@ -108,7 +109,7 @@ export function FabricProcessRoutingWorkspace({
   const [isBatchReceiveDialogOpen, setIsBatchReceiveDialogOpen] = useState<boolean>(false);
 
   // View mode & Split / Quality Dialog state
-  const [workspaceView, setWorkspaceView] = useState<"routing" | "genealogy" | "quality">("routing");
+  const [workspaceView, setWorkspaceView] = useState<"routing" | "genealogy" | "quality" | "commercial">("routing");
   const [selectedRollForSplit, setSelectedRollForSplit] = useState<FabricRollDraft | null>(null);
   const [isSplitDialogOpen, setIsSplitDialogOpen] = useState<boolean>(false);
 
@@ -349,6 +350,8 @@ export function FabricProcessRoutingWorkspace({
           <span className="text-indigo-300 font-bold">Post-Process Quality</span>
           <ArrowRight className="w-3 h-3 text-indigo-500 shrink-0" />
           <span className="text-purple-300 font-semibold">Reinspection</span>
+          <ArrowRight className="w-3 h-3 text-purple-500 shrink-0" />
+          <span className="text-emerald-300 font-bold">Commercial Release Review</span>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -378,6 +381,15 @@ export function FabricProcessRoutingWorkspace({
             <ClipboardCheck className="w-3.5 h-3.5 mr-1" />
             Post-Process Quality
           </Button>
+          <Button
+            size="sm"
+            variant={workspaceView === "commercial" ? "default" : "outline"}
+            onClick={() => setWorkspaceView("commercial")}
+            className={`h-7 text-xs px-2.5 ${workspaceView === "commercial" ? "bg-indigo-600 text-white" : "border-slate-700 text-slate-300"}`}
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-1" />
+            Commercial Release
+          </Button>
         </div>
       </div>
 
@@ -390,6 +402,13 @@ export function FabricProcessRoutingWorkspace({
         />
       ) : workspaceView === "quality" ? (
         <FabricPostProcessQualityWorkspace
+          order={order}
+          jobCards={jobCards}
+          rolls={rolls}
+          onRefresh={onRefresh}
+        />
+      ) : workspaceView === "commercial" ? (
+        <FabricCommercialReleaseWorkspace
           order={order}
           jobCards={jobCards}
           rolls={rolls}

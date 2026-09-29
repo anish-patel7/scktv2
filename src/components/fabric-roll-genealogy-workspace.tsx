@@ -56,6 +56,7 @@ import { FabricRollGenealogyTree } from "./fabric-roll-genealogy-tree";
 import { FabricRollSplitHistory } from "./fabric-roll-split-history";
 import { FabricPostProcessQualityDialog } from "./fabric-post-process-quality-dialog";
 import { FabricPostProcessQualityService } from "@/services/fabric-post-process-quality.service";
+import { FabricCommercialReleaseDialog } from "@/components/fabric-commercial-release-dialog";
 
 interface FabricRollGenealogyWorkspaceProps {
   order?: ProductionOrder | null | undefined;
@@ -106,6 +107,15 @@ export function FabricRollGenealogyWorkspace({
   // Phase 5G Quality Dialog state (Step 51)
   const [selectedRollForQuality, setSelectedRollForQuality] = useState<FabricRollDraft | null>(null);
   const [isQualityDialogOpen, setIsQualityDialogOpen] = useState<boolean>(false);
+
+  // Phase 5H Commercial Release Dialog state (Step 50)
+  const [selectedRollIdForCommercial, setSelectedRollIdForCommercial] = useState<string | null>(null);
+  const [isCommercialDialogOpen, setIsCommercialDialogOpen] = useState<boolean>(false);
+
+  const handleOpenCommercialForNode = (node: FabricRollGenealogyNode) => {
+    setSelectedRollIdForCommercial(node.id);
+    setIsCommercialDialogOpen(true);
+  };
 
   const handleOpenQualityForNode = (node: FabricRollGenealogyNode) => {
     const matchingDraft = rolls.find((r) => r.id === node.id || r.temporaryRollNo === node.rollIdentity);
@@ -660,6 +670,17 @@ export function FabricRollGenealogyWorkspace({
                           >
                             <ChevronRight className="w-3 h-3" />
                           </Button>
+
+                          {/* Commercial Release / History (Step 50) */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenCommercialForNode(node)}
+                            className="h-6 text-[10px] px-2 text-slate-400 hover:text-emerald-300 hover:bg-slate-800"
+                            title={isActive && isLeaf ? "Review Commercial Release" : "View Commercial History"}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -817,6 +838,20 @@ export function FabricRollGenealogyWorkspace({
           order={order}
           jobCard={findJobCard(selectedRollForQuality.jobCardId)}
           onSaved={() => {
+            onRefresh?.();
+          }}
+        />
+      )}
+
+      {/* Phase 5H Commercial Release Dialog Modal (Step 50) */}
+      {selectedRollIdForCommercial && (
+        <FabricCommercialReleaseDialog
+          open={isCommercialDialogOpen}
+          onOpenChange={setIsCommercialDialogOpen}
+          rollNodeIdOrIdentity={selectedRollIdForCommercial}
+          order={order}
+          jobCard={jobCards[0]}
+          onReleaseConfirmed={() => {
             onRefresh?.();
           }}
         />

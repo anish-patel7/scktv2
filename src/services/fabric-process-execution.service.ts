@@ -1215,6 +1215,10 @@ export class FabricProcessExecutionService {
     return Array.from(this.preparations.values());
   }
 
+  public static getPreparationById(preparationId: string): FabricProcessIssuePreparation | undefined {
+    return this.preparations.get(preparationId);
+  }
+
   public static getExecutionWorkspaceSummary(rolls: FabricRollDraft[]): {
     totalRolls: number;
     readyForPreparationCount: number;

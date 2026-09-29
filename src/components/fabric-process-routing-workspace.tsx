@@ -63,6 +63,9 @@ import { FabricProcessReceiveBatchDialog } from "@/components/fabric-process-rec
 import { FabricRollGenealogyService } from "@/services/fabric-roll-genealogy.service";
 import { FabricRollSplitDialog } from "@/components/fabric-roll-split-dialog";
 import { FabricRollGenealogyWorkspace } from "@/components/fabric-roll-genealogy-workspace";
+import { FabricPostProcessQualityWorkspace } from "@/components/fabric-post-process-quality-workspace";
+import { FabricPostProcessQualityDialog } from "@/components/fabric-post-process-quality-dialog";
+import { FabricPostProcessQualityService } from "@/services/fabric-post-process-quality.service";
 
 interface FabricProcessRoutingWorkspaceProps {
   order?: ProductionOrder | null;
@@ -104,10 +107,20 @@ export function FabricProcessRoutingWorkspace({
   const [isBatchIssueDialogOpen, setIsBatchIssueDialogOpen] = useState<boolean>(false);
   const [isBatchReceiveDialogOpen, setIsBatchReceiveDialogOpen] = useState<boolean>(false);
 
-  // View mode & Split Dialog state
-  const [workspaceView, setWorkspaceView] = useState<"routing" | "genealogy">("routing");
+  // View mode & Split / Quality Dialog state
+  const [workspaceView, setWorkspaceView] = useState<"routing" | "genealogy" | "quality">("routing");
   const [selectedRollForSplit, setSelectedRollForSplit] = useState<FabricRollDraft | null>(null);
   const [isSplitDialogOpen, setIsSplitDialogOpen] = useState<boolean>(false);
+
+  const [selectedRollForQuality, setSelectedRollForQuality] = useState<FabricRollDraft | null>(null);
+  const [selectedReceiveIdForQuality, setSelectedReceiveIdForQuality] = useState<string | undefined>(undefined);
+  const [isQualityDialogOpen, setIsQualityDialogOpen] = useState<boolean>(false);
+
+  const handleOpenQuality = (roll: FabricRollDraft, receiveId?: string) => {
+    setSelectedRollForQuality(roll);
+    setSelectedReceiveIdForQuality(receiveId);
+    setIsQualityDialogOpen(true);
+  };
 
   // Overall Routing KPIs
   const orderSummary = useMemo(() => {
@@ -314,7 +327,7 @@ export function FabricProcessRoutingWorkspace({
 
   return (
     <div className="space-y-4">
-      {/* Traceability Breadcrumb (Step 47) */}
+      {/* Traceability Breadcrumb (Step 47, 53) */}
       <div className="p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center justify-between text-xs text-slate-400">
         <div className="flex items-center gap-1.5 font-mono text-[11px] overflow-x-auto py-0.5">
           <span className="text-slate-500">Sales Order</span>
@@ -325,15 +338,17 @@ export function FabricProcessRoutingWorkspace({
           <ArrowRight className="w-3 h-3 text-slate-600 shrink-0" />
           <span className="text-slate-400">Fabric Receipt</span>
           <ArrowRight className="w-3 h-3 text-slate-600 shrink-0" />
-          <span className="text-slate-400">Roll Quality</span>
+          <span className="text-slate-400">Root / Parent / Active Roll</span>
           <ArrowRight className="w-3 h-3 text-slate-600 shrink-0" />
           <span className="text-slate-400">Process Route</span>
           <ArrowRight className="w-3 h-3 text-slate-600 shrink-0" />
-          <span className="text-emerald-400 font-medium">Process Issue / Outward</span>
+          <span className="text-emerald-400 font-medium">Process Issue</span>
           <ArrowRight className="w-3 h-3 text-emerald-600 shrink-0" />
-          <span className="text-cyan-300 font-bold">Process Receive / Inward</span>
+          <span className="text-cyan-300 font-bold">Process Receive</span>
           <ArrowRight className="w-3 h-3 text-cyan-600 shrink-0" />
-          <span className="text-indigo-300 font-bold">Reconciliation</span>
+          <span className="text-indigo-300 font-bold">Post-Process Quality</span>
+          <ArrowRight className="w-3 h-3 text-indigo-500 shrink-0" />
+          <span className="text-purple-300 font-semibold">Reinspection</span>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -354,11 +369,27 @@ export function FabricProcessRoutingWorkspace({
             <GitBranch className="w-3.5 h-3.5 mr-1" />
             Roll Genealogy & Split
           </Button>
+          <Button
+            size="sm"
+            variant={workspaceView === "quality" ? "default" : "outline"}
+            onClick={() => setWorkspaceView("quality")}
+            className={`h-7 text-xs px-2.5 ${workspaceView === "quality" ? "bg-indigo-600 text-white" : "border-slate-700 text-slate-300"}`}
+          >
+            <ClipboardCheck className="w-3.5 h-3.5 mr-1" />
+            Post-Process Quality
+          </Button>
         </div>
       </div>
 
       {workspaceView === "genealogy" ? (
         <FabricRollGenealogyWorkspace
+          order={order}
+          jobCards={jobCards}
+          rolls={rolls}
+          onRefresh={onRefresh}
+        />
+      ) : workspaceView === "quality" ? (
+        <FabricPostProcessQualityWorkspace
           order={order}
           jobCards={jobCards}
           rolls={rolls}
@@ -752,25 +783,49 @@ export function FabricProcessRoutingWorkspace({
                               Waiting Step {currentStep.sequence - 1}
                             </Button>
                           ) : isReceivedClean ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenReceive(roll)}
-                              className="h-6 text-[11px] px-2.5 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/40 flex items-center gap-1"
-                            >
-                              <Eye className="w-3 h-3" />
-                              View Receive
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenReceive(roll)}
+                                className="h-6 text-[10px] px-2 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/40 flex items-center gap-1"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Receive
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenQuality(roll, activeReceive?.id)}
+                                className="h-6 text-[10px] px-2 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40 flex items-center gap-1"
+                                title="Inspect Quality After Process (Phase 5G)"
+                              >
+                                <ClipboardCheck className="w-3 h-3" />
+                                Inspect Quality
+                              </Button>
+                            </div>
                           ) : isReceiveReviewRequired ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenReceive(roll)}
-                              className="h-6 text-[11px] px-2.5 border-amber-500/40 text-amber-300 hover:bg-amber-950/40 flex items-center gap-1"
-                            >
-                              <AlertTriangle className="w-3 h-3" />
-                              Review Recon
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenReceive(roll)}
+                                className="h-6 text-[10px] px-2 border-amber-500/40 text-amber-300 hover:bg-amber-950/40 flex items-center gap-1"
+                              >
+                                <AlertTriangle className="w-3 h-3" />
+                                Recon
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenQuality(roll, activeReceive?.id)}
+                                className="h-6 text-[10px] px-2 border-amber-500/40 text-amber-300 hover:bg-amber-950/40 flex items-center gap-1"
+                                title="Quality Review Context (Phase 5G)"
+                              >
+                                <ShieldAlert className="w-3 h-3" />
+                                Quality Review
+                              </Button>
+                            </div>
                           ) : isPrepared ? (
                             <Button
                               size="sm"
@@ -941,19 +996,34 @@ export function FabricProcessRoutingWorkspace({
                     )}
 
                     {(isReceivedClean || isReceiveReviewRequired) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenReceive(roll)}
-                        className={`h-7 text-xs ${
-                          isReceivedClean
-                            ? "border-emerald-500/40 text-emerald-300"
-                            : "border-amber-500/40 text-amber-300"
-                        }`}
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        Receive
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenReceive(roll)}
+                          className={`h-7 text-xs ${
+                            isReceivedClean
+                              ? "border-emerald-500/40 text-emerald-300"
+                              : "border-amber-500/40 text-amber-300"
+                          }`}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Receive
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenQuality(roll, activeReceive?.id)}
+                          className={`h-7 text-xs ${
+                            isReceivedClean
+                              ? "border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40"
+                              : "border-amber-500/40 text-amber-300 hover:bg-amber-950/40"
+                          }`}
+                        >
+                          <ClipboardCheck className="w-3 h-3 mr-1" />
+                          {isReceivedClean ? "Inspect Quality" : "Quality Review"}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1043,6 +1113,20 @@ export function FabricProcessRoutingWorkspace({
           jobCard={jobCards.find((jc) => jc.id === selectedRollForSplit.jobCardId)}
           onSplitConfirmed={() => {
             setIsSplitDialogOpen(false);
+            onRefresh?.();
+          }}
+        />
+      )}
+      {/* Phase 5G Post-Process Quality Dialog Modal */}
+      {selectedRollForQuality && (
+        <FabricPostProcessQualityDialog
+          open={isQualityDialogOpen}
+          onOpenChange={setIsQualityDialogOpen}
+          roll={selectedRollForQuality}
+          order={order}
+          jobCard={jobCards.find((jc) => jc.id === selectedRollForQuality.jobCardId)}
+          sourceProcessReceiveId={selectedReceiveIdForQuality}
+          onSaved={() => {
             onRefresh?.();
           }}
         />

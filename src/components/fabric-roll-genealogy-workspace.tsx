@@ -54,6 +54,8 @@ import type { ProductionOrder } from "@/lib/production-store";
 import { FabricRollSplitDialog } from "./fabric-roll-split-dialog";
 import { FabricRollGenealogyTree } from "./fabric-roll-genealogy-tree";
 import { FabricRollSplitHistory } from "./fabric-roll-split-history";
+import { FabricPostProcessQualityDialog } from "./fabric-post-process-quality-dialog";
+import { FabricPostProcessQualityService } from "@/services/fabric-post-process-quality.service";
 
 interface FabricRollGenealogyWorkspaceProps {
   order?: ProductionOrder | null | undefined;
@@ -100,6 +102,28 @@ export function FabricRollGenealogyWorkspace({
 
   const [selectedNodeForLineage, setSelectedNodeForLineage] = useState<FabricRollGenealogyNode | null>(null);
   const [isLineageModalOpen, setIsLineageModalOpen] = useState<boolean>(false);
+
+  // Phase 5G Quality Dialog state (Step 51)
+  const [selectedRollForQuality, setSelectedRollForQuality] = useState<FabricRollDraft | null>(null);
+  const [isQualityDialogOpen, setIsQualityDialogOpen] = useState<boolean>(false);
+
+  const handleOpenQualityForNode = (node: FabricRollGenealogyNode) => {
+    const matchingDraft = rolls.find((r) => r.id === node.id || r.temporaryRollNo === node.rollIdentity);
+    const draft: FabricRollDraft = matchingDraft || {
+      id: node.id,
+      receiveDraftId: "rcv-sim",
+      jobCardId: node.jobCardId || "jc-sim",
+      productionOrderId: node.productionOrderId || "po-sim",
+      rollSequence: 1,
+      temporaryRollNo: node.rollIdentity,
+      qtyMetre: node.quantityMetre,
+      inspectionStatus: "UNINSPECTED",
+      stockStatus: "DRAFT_GREY",
+      isSaleable: false,
+    };
+    setSelectedRollForQuality(draft);
+    setIsQualityDialogOpen(true);
+  };
 
   // Auto-register/ensure root nodes for all active fabric roll drafts
   useMemo(() => {
@@ -426,6 +450,9 @@ export function FabricRollGenealogyWorkspace({
                     ? FabricRollGenealogyService.getRollNode(node.parentNodeId)
                     : undefined;
 
+                  const isLeaf = FabricRollGenealogyService.getChildren(node.id).length === 0;
+                  const existingQuality = FabricPostProcessQualityService.getLatestInspectionForRoll(node.id);
+
                   return (
                     <tr
                       key={node.id}
@@ -531,6 +558,44 @@ export function FabricRollGenealogyWorkspace({
                       {/* Actions */}
                       <td className="py-3 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5 font-sans">
+                          {/* Quality Actions (Step 51) */}
+                          {isActive && isLeaf ? (
+                            existingQuality ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenQualityForNode(node)}
+                                className="h-6 text-[10px] px-2 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/40 flex items-center gap-1"
+                                title="View Quality Result / Reinspect"
+                              >
+                                <ShieldCheck className="w-3 h-3" />
+                                View Quality
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenQualityForNode(node)}
+                                className="h-6 text-[10px] px-2 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40 flex items-center gap-1"
+                                title="Inspect Quality After Process"
+                              >
+                                <ShieldCheck className="w-3 h-3" />
+                                Inspect After Process
+                              </Button>
+                            )
+                          ) : isSuperseded ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleOpenQualityForNode(node)}
+                              className="h-6 text-[10px] px-2 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1"
+                              title="View Historical Quality Audit Trail (No Operational Inspection)"
+                            >
+                              <History className="w-3 h-3 text-slate-500" />
+                              View Quality History
+                            </Button>
+                          ) : null}
+
                           {/* Split Action (Step 1, 36) */}
                           {isActive ? (
                             <Button
@@ -742,6 +807,19 @@ export function FabricRollGenealogyWorkspace({
             </div>
           </DialogContent>
         </Dialog>
+      )}
+      {/* Phase 5G Post-Process Quality Dialog Modal (Step 51) */}
+      {selectedRollForQuality && (
+        <FabricPostProcessQualityDialog
+          open={isQualityDialogOpen}
+          onOpenChange={setIsQualityDialogOpen}
+          roll={selectedRollForQuality}
+          order={order}
+          jobCard={findJobCard(selectedRollForQuality.jobCardId)}
+          onSaved={() => {
+            onRefresh?.();
+          }}
+        />
       )}
     </div>
   );

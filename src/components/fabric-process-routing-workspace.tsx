@@ -19,6 +19,8 @@ import {
   FileCheck,
   Scale,
   RotateCcw,
+  Split,
+  GitBranch,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,9 @@ import { FabricProcessIssueDialog } from "@/components/fabric-process-issue-dial
 import { FabricProcessBatchDialog } from "@/components/fabric-process-batch-dialog";
 import { FabricProcessReceiveDialog } from "@/components/fabric-process-receive-dialog";
 import { FabricProcessReceiveBatchDialog } from "@/components/fabric-process-receive-batch-dialog";
+import { FabricRollGenealogyService } from "@/services/fabric-roll-genealogy.service";
+import { FabricRollSplitDialog } from "@/components/fabric-roll-split-dialog";
+import { FabricRollGenealogyWorkspace } from "@/components/fabric-roll-genealogy-workspace";
 
 interface FabricProcessRoutingWorkspaceProps {
   order?: ProductionOrder | null;
@@ -98,6 +103,11 @@ export function FabricProcessRoutingWorkspace({
   const [selectedRollIdsForBatch, setSelectedRollIdsForBatch] = useState<Set<string>>(new Set());
   const [isBatchIssueDialogOpen, setIsBatchIssueDialogOpen] = useState<boolean>(false);
   const [isBatchReceiveDialogOpen, setIsBatchReceiveDialogOpen] = useState<boolean>(false);
+
+  // View mode & Split Dialog state
+  const [workspaceView, setWorkspaceView] = useState<"routing" | "genealogy">("routing");
+  const [selectedRollForSplit, setSelectedRollForSplit] = useState<FabricRollDraft | null>(null);
+  const [isSplitDialogOpen, setIsSplitDialogOpen] = useState<boolean>(false);
 
   // Overall Routing KPIs
   const orderSummary = useMemo(() => {
@@ -167,6 +177,7 @@ export function FabricProcessRoutingWorkspace({
         isStepCompletePreview,
         isRouteCompletePreview,
         isLastStep,
+        isSuperseded: !FabricRollGenealogyService.isRollOperationallyActive(roll.id),
       };
     });
   }, [rolls]);
@@ -324,8 +335,37 @@ export function FabricProcessRoutingWorkspace({
           <ArrowRight className="w-3 h-3 text-cyan-600 shrink-0" />
           <span className="text-indigo-300 font-bold">Reconciliation</span>
         </div>
-        <span className="text-[10px] text-slate-500 hidden lg:inline">Phase 5E Frontend Simulation Only</span>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={workspaceView === "routing" ? "default" : "outline"}
+            onClick={() => setWorkspaceView("routing")}
+            className={`h-7 text-xs px-2.5 ${workspaceView === "routing" ? "bg-indigo-600 text-white" : "border-slate-700 text-slate-300"}`}
+          >
+            <Route className="w-3.5 h-3.5 mr-1" />
+            Process Routing
+          </Button>
+          <Button
+            size="sm"
+            variant={workspaceView === "genealogy" ? "default" : "outline"}
+            onClick={() => setWorkspaceView("genealogy")}
+            className={`h-7 text-xs px-2.5 ${workspaceView === "genealogy" ? "bg-indigo-600 text-white" : "border-slate-700 text-slate-300"}`}
+          >
+            <GitBranch className="w-3.5 h-3.5 mr-1" />
+            Roll Genealogy & Split
+          </Button>
+        </div>
       </div>
+
+      {workspaceView === "genealogy" ? (
+        <FabricRollGenealogyWorkspace
+          order={order}
+          jobCards={jobCards}
+          rolls={rolls}
+          onRefresh={onRefresh}
+        />
+      ) : (
+        <>
 
       {/* KPI Cards: Routing & Execution Statuses (Steps 44 & 45) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
@@ -482,6 +522,7 @@ export function FabricProcessRoutingWorkspace({
                 <th className="py-2.5 px-3">Execution State</th>
                 <th className="py-2.5 px-3 text-center">Route Action</th>
                 <th className="py-2.5 px-3 text-center">Execution / Receive Action</th>
+                <th className="py-2.5 px-3 text-center">Genealogy / Split</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
@@ -509,6 +550,7 @@ export function FabricProcessRoutingWorkspace({
                     isStepCompletePreview,
                     isRouteCompletePreview,
                     isLastStep,
+                    isSuperseded,
                   }) => {
                     const statusMeta =
                       ROUTE_STATUS_BADGES[rSummary.routeStatus] || ROUTE_STATUS_BADGES.NOT_PLANNED;
@@ -633,22 +675,63 @@ export function FabricProcessRoutingWorkspace({
                           )}
                         </td>
 
+                        {/* Genealogy / Split Action (Step 1, 2) */}
+                        <td className="py-2.5 px-3 text-center">
+                          {isSuperseded ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedRollForSplit(roll);
+                                setIsSplitDialogOpen(true);
+                              }}
+                              className="h-6 text-[10px] px-2 text-slate-400 hover:text-white"
+                              title="View Roll Genealogy Tree"
+                            >
+                              <GitBranch className="w-3 h-3 mr-1 text-slate-500" />
+                              Tree
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedRollForSplit(roll);
+                                setIsSplitDialogOpen(true);
+                              }}
+                              className="h-6 text-[10px] px-2 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40"
+                              title="Split Roll"
+                            >
+                              <Split className="w-3 h-3 mr-1" />
+                              Split Roll
+                            </Button>
+                          )}
+                        </td>
+
                         {/* Route Action */}
                         <td className="py-2.5 px-3 text-center">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenRouting(roll)}
-                            className="h-6 text-[11px] px-2 text-indigo-300 hover:text-white hover:bg-slate-800"
-                          >
-                            <Route className="w-3 h-3 mr-1" />
-                            Route
-                          </Button>
+                          {isSuperseded ? (
+                            <span className="text-slate-600 text-[10px] italic">Superseded</span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleOpenRouting(roll)}
+                              className="h-6 text-[11px] px-2 text-indigo-300 hover:text-white hover:bg-slate-800"
+                            >
+                              <Route className="w-3 h-3 mr-1" />
+                              Route
+                            </Button>
+                          )}
                         </td>
 
                         {/* Execution / Receive Action (Step 46) */}
                         <td className="py-2.5 px-3 text-center">
-                          {isNoFurther ? (
+                          {isSuperseded ? (
+                            <span className="text-slate-500 text-[10px] italic" title="Use active child Roll identities for future operations">
+                              Use child rolls
+                            </span>
+                          ) : isNoFurther ? (
                             <span className="text-slate-500 text-[11px] italic">No Receive Required</span>
                           ) : isHold ? (
                             <Button
@@ -948,6 +1031,23 @@ export function FabricProcessRoutingWorkspace({
             onRefresh?.();
           }}
         />
+      )}
+
+      {/* Phase 5F Roll Split Dialog Modal */}
+      {selectedRollForSplit && (
+        <FabricRollSplitDialog
+          open={isSplitDialogOpen}
+          onOpenChange={setIsSplitDialogOpen}
+          roll={selectedRollForSplit}
+          order={order}
+          jobCard={jobCards.find((jc) => jc.id === selectedRollForSplit.jobCardId)}
+          onSplitConfirmed={() => {
+            setIsSplitDialogOpen(false);
+            onRefresh?.();
+          }}
+        />
+      )}
+      </>
       )}
     </div>
   );

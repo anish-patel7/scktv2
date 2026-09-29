@@ -56,6 +56,7 @@ import type { ProductionOrder } from "@/lib/production-store";
 import { getLocalParties, getLocalSubParties } from "@/lib/party-store";
 import { FabricProcessReconciliationPanel } from "./fabric-process-reconciliation-panel";
 import { FabricProcessReceiveHistory } from "./fabric-process-receive-history";
+import { FabricRollSplitDialog } from "./fabric-roll-split-dialog";
 
 interface FabricProcessReceiveDialogProps {
   open: boolean;
@@ -87,6 +88,7 @@ export function FabricProcessReceiveDialog({
 
   // True partial return toggle/flag (Step 10)
   const [isPartialReturnAttempt, setIsPartialReturnAttempt] = useState<boolean>(false);
+  const [isSplitDialogOpen, setIsSplitDialogOpen] = useState<boolean>(false);
 
   // Revision state
   const [isRevising, setIsRevising] = useState<boolean>(false);
@@ -506,9 +508,9 @@ export function FabricProcessReceiveDialog({
             </label>
           </div>
 
-          {/* Roll Split Required Alert (Step 10) */}
+          {/* Roll Split Required Alert (Step 10, 41) */}
           {isPartialReturnAttempt && (
-            <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/50 text-rose-200 text-xs space-y-1 mt-2">
+            <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/50 text-rose-200 text-xs space-y-2 mt-2">
               <div className="flex items-center gap-2 font-bold text-rose-300">
                 <Split className="w-4 h-4" />
                 ROLL SPLIT REQUIRED
@@ -519,6 +521,16 @@ export function FabricProcessReceiveDialog({
               <p className="text-[10px] text-rose-300/80">
                 You cannot receive partial physical meterage under the same Roll identity while leaving a remnant at the processor. Save is blocked.
               </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsSplitDialogOpen(true)}
+                className="h-7 text-xs border-indigo-500/50 text-indigo-300 hover:bg-indigo-950/50 flex items-center gap-1.5"
+              >
+                <Split className="w-3.5 h-3.5" />
+                Create Split Proposal
+              </Button>
             </div>
           )}
         </div>
@@ -807,6 +819,22 @@ export function FabricProcessReceiveDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      {/* Split Proposal Dialog (Step 41) */}
+      {isSplitDialogOpen && roll && (
+        <FabricRollSplitDialog
+          open={isSplitDialogOpen}
+          onOpenChange={setIsSplitDialogOpen}
+          roll={roll}
+          order={order}
+          jobCard={jobCard}
+          desiredProcessQtyMetre={parsedReceivedQty > 0 ? parsedReceivedQty : undefined}
+          onSplitConfirmed={() => {
+            setIsSplitDialogOpen(false);
+            onSaved?.();
+          }}
+        />
+      )}
     </Dialog>
   );
 }

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { SidebarAccordionNav } from "@/components/sidebar-accordion-nav";
 import { NAV } from "@/lib/nav";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, signOutUser } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +128,7 @@ export function AppShell({
                 localStorage.removeItem("sckt_demo_user");
                 localStorage.removeItem("weaveone_demo_user");
               }
+              signOutUser();
               await supabase.auth.signOut();
               navigate({ to: "/auth" });
             }}

@@ -117,10 +117,25 @@ function SalesOrdersPage() {
 
   const handleConfirmOrder = () => {
     const cust = salesData.customers.find((c) => c.id === orderForm.customer_id) || salesData.customers[0];
-    if (!cust) return;
+    if (!cust) {
+      toast.error("Select a customer before confirming the order.");
+      return;
+    }
 
     const qty = Number(orderForm.qty_metre) || 0;
     const rate = Number(orderForm.rate_per_metre) || 0;
+    if (qty <= 0) {
+      toast.error("Quantity (metre) must be greater than zero.");
+      return;
+    }
+    if (rate <= 0) {
+      toast.error("Rate per metre must be greater than zero.");
+      return;
+    }
+    if (!orderForm.delivery_date) {
+      toast.error("Delivery date is required.");
+      return;
+    }
     const totalValue = qty * rate;
 
     // Acceptance Criteria 2: Credit Limit Governance Check!

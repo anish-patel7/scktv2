@@ -31,12 +31,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmt } from "@/lib/costing";
-import { getLocalYarnMaterials, type YarnMaterial } from "@/lib/material-store";
 import { PartyMasterView } from "@/components/party-master-view";
 import { YarnMasterView } from "@/components/yarn-master-view";
 import { WarehouseMasterView } from "@/components/warehouse-master-view";
 import { ItemMasterView } from "@/components/item-master-view";
-import { getLocalWorkTypes, saveLocalWorkTypes, SEED_WORK_TYPES } from "@/lib/work-type-store";
+import { getLocalWorkTypes, saveLocalWorkTypes } from "@/lib/work-type-store";
 import { cn } from "@/lib/utils";
 
 interface GenericMasterItem {
@@ -57,54 +56,25 @@ interface SubMasterEntry {
   remark?: string | undefined;
 }
 
-// Fallback seed data for generic master types
-const SEED_GENERIC_MASTERS: Record<string, GenericMasterItem[]> = {
-  item: [
-    { id: "item-1", code: "ITEM-001", name: "Kashmiri Kota Pashmina Dress Fabric", description: "Pashmina weave with black beam", active: true },
-    { id: "item-2", code: "ITEM-002", name: "Silk Brocade Royal Saree Fabric", description: "Heavy Banarasi Jari Brocade", active: true },
-    { id: "item-3", code: "ITEM-003", name: "Jacquard Floral Garden Dupatta", description: "Multi-color floral jacquard weave", active: true },
-  ],
-  jobwork_party: [
-    { id: "jwp-1", code: "JWP-001", name: "Shree Ram Dyeing & Finishing", description: "Specialized in Banarasi Jari Dyeing & Sizing", active: true },
-    { id: "jwp-2", code: "JWP-002", name: "Vardhman Weaving Division", description: "High-speed airjet loom job work", active: true },
-    { id: "jwp-3", code: "JWP-003", name: "Kothari Processors Pvt Ltd", description: "RFD processing & soft finish master", active: true },
-  ],
-  beam: [
-    { id: "bm-1", code: "BM-101", name: "30 Kota Black Beam", description: "Ends: 5444 · Denier: 35 · Length: 1000m", active: true },
-    { id: "bm-2", code: "BM-102", name: "75 Beam Jari", description: "Ends: 224 · Denier: 160 · Length: 800m", active: true },
-    { id: "bm-3", code: "BM-103", name: "21 Bright Mono Beam", description: "Ends: 3200 · Denier: 21 · Length: 1200m", active: true },
-  ],
-  loom: [
-    { id: "lm-1", code: "LM-01", name: "Airjet Loom #01", description: "Tsudakoma ZAX-9200 (190cm Reed Space)", active: true },
-    { id: "lm-2", code: "LM-02", name: "Rapier Jacquard Loom #02", description: "Picanol OptiMax-i (220cm Reed Space)", active: true },
-    { id: "lm-3", code: "LM-03", name: "Waterjet Loom #03", description: "Toyota LWT-810 (190cm Reed Space)", active: true },
-  ],
-  broker: [
-    { id: "brk-1", code: "BRK-001", name: "Rajeshwar Trading Co.", description: "Ring Road Market, Surat · Mob: 9825100000", active: true },
-    { id: "brk-2", code: "BRK-002", name: "Jay Ambe Agency", description: "Kalupur Commercial Market, Ahmedabad", active: true },
-  ],
-  salesman: [
-    { id: "sls-1", code: "SLS-001", name: "Mukesh Mehta", description: "Senior Sales Manager (Surat Region)", active: true },
-    { id: "sls-2", code: "SLS-002", name: "Suresh Shah", description: "Textile Representative (Mumbai Region)", active: true },
-  ],
-  beam_colour: [
-    { id: "bc-1", code: "BYM-01", name: "Black Kota Beam Yarn", description: "Dark Navy / Black Warp Beam Yarn", active: true },
-    { id: "bc-2", code: "BYM-02", name: "Banarasi Gold Beam Yarn", description: "Metallic Gold Warp Beam Yarn", active: true },
-    { id: "bc-3", code: "BYM-03", name: "Royal Blue Beam Yarn", description: "Dyed Royal Blue Warp Beam Yarn", active: true },
-  ],
-  process: [
-    { id: "prc-1", code: "PRC-01", name: "Butta Cutting & Processing", description: "Standard Rate ₹2.00 / cut", active: true },
-    { id: "prc-2", code: "PRC-02", name: "Ready for Dyeing (RFD) Finish", description: "Standard Rate ₹0.00 / cut", active: true },
-    { id: "prc-3", code: "PRC-03", name: "Soft Wash & Calendar Finish", description: "Standard Rate ₹1.50 / metre", active: true },
-  ],
-  work_type: SEED_WORK_TYPES.map((w) => ({
-    id: w.id,
-    code: w.code,
-    name: w.name,
-    description: w.description,
-    active: w.active,
-  })),
-};
+/** Readable message for a failed Supabase master write/read (no raw JSON / Postgres internals). */
+function masterErrorMessage(error: { code?: string; message?: string } | null | undefined): string {
+  if (!error) return "Unknown error";
+  if (error.code === "23505") return "A record with this code already exists.";
+  if (error.code === "42501" || /permission denied|row-level security/i.test(error.message ?? "")) {
+    return "You do not have permission to perform this action. Please sign in with an authorised account.";
+  }
+  return error.message || "Request failed";
+}
+
+/** Next auto code: highest existing numeric suffix for the prefix + 1 (never length-based). */
+function nextMasterCode(prefix: string, padLen: number, existingCodes: string[]): string {
+  const re = new RegExp(`^${prefix}-(\\d+)$`, "i");
+  const max = existingCodes.reduce((m, c) => {
+    const hit = re.exec(c.trim());
+    return hit ? Math.max(m, Number(hit[1])) : m;
+  }, 0);
+  return `${prefix}-${String(max + 1).padStart(padLen, "0")}`;
+}
 
 export const Route = createFileRoute("/masters/$type")({
   head: () => ({
@@ -152,74 +122,40 @@ function MasterPage() {
     rate_per_kg: "",
   });
 
-  // Query master records with local fallback
-  const { data: dbFetched = [] } = useQuery({
+  const isWorkType = type === "work_type";
+
+  // Generic masters: the Supabase `masters` table is the only authority (no seed fallback).
+  // Work Type remains on its local store (shared with other modules).
+  const {
+    data: dbFetched = [],
+    error: loadError,
+    isLoading,
+  } = useQuery({
     queryKey: ["master", type],
-    enabled: !isParty,
+    enabled: !isParty && !isMaterial && !isWarehouse && type !== "item",
     queryFn: async () => {
-      try {
-        if (isMaterial) {
-          const { data, error } = await supabase.from("materials").select("*").order("code");
-          if (!error && data && data.length > 0) return data;
-          const localYarns = getLocalYarnMaterials();
-          return localYarns.map((m) => ({
-            id: m.id,
-            code: m.code,
-            name: m.name,
-            composition: m.composition || undefined,
-            denier: m.denier,
-            rate_per_kg: m.ratePerKg,
-            active: m.active,
-          }));
-        }
-
-        if (type === "work_type") {
-          return getLocalWorkTypes().map((w) => ({
-            id: w.id,
-            code: w.code,
-            name: w.name,
-            description: w.description,
-            active: w.active,
-          }));
-        }
-
-        const { data, error } = await supabase
-          .from("masters")
-          .select("*")
-          .eq("master_type", type)
-          .order("code");
-        if (!error && data && data.length > 0) return data;
-
-        return SEED_GENERIC_MASTERS[type] || [];
-      } catch {
-        if (isMaterial) {
-          return getLocalYarnMaterials().map((m) => ({
-            id: m.id,
-            code: m.code,
-            name: m.name,
-            composition: m.composition || undefined,
-            denier: m.denier,
-            rate_per_kg: m.ratePerKg,
-            active: m.active,
-          }));
-        }
-        if (type === "work_type") {
-          return getLocalWorkTypes().map((w) => ({
-            id: w.id,
-            code: w.code,
-            name: w.name,
-            description: w.description,
-            active: w.active,
-          }));
-        }
-        return SEED_GENERIC_MASTERS[type] || [];
+      if (isWorkType) {
+        return getLocalWorkTypes().map((w) => ({
+          id: w.id,
+          code: w.code,
+          name: w.name,
+          description: w.description,
+          active: w.active,
+        }));
       }
+      const { data, error } = await supabase
+        .from("masters")
+        .select("*")
+        .eq("master_type", type)
+        .order("code");
+      if (error) throw new Error(masterErrorMessage(error));
+      return data ?? [];
     },
   });
 
   // Combined records list
   const activeRecords = useMemo<GenericMasterItem[]>(() => {
-    if (localRecords[type]) return localRecords[type];
+    if (isWorkType && localRecords[type]) return localRecords[type];
     return dbFetched.map((r: any) => ({
       id: String(r.id),
       code: String(r.code || ""),
@@ -282,12 +218,25 @@ function MasterPage() {
     );
   }
 
+  const persistWorkTypes = (list: GenericMasterItem[]) => {
+    saveLocalWorkTypes(
+      list.map((u) => ({
+        id: u.id,
+        code: u.code,
+        name: u.name,
+        description: u.description,
+        active: u.active,
+      }))
+    );
+    setLocalRecords((prev) => ({ ...prev, [type]: list }));
+  };
+
   const handleOpenCreate = () => {
     setEditingItem(null);
     const prefix = type === "beam_colour" ? "BYM" : type === "work_type" ? "WT" : type.slice(0, 3).toUpperCase();
     const padLen = type === "beam_colour" || type === "loom" || type === "process" || type === "work_type" ? 2 : 3;
     setForm({
-      code: `${prefix}-${String(activeRecords.length + 1).padStart(padLen, "0")}`,
+      code: nextMasterCode(prefix, padLen, activeRecords.map((r) => r.code)),
       name: "",
       description: "",
       denier: "",
@@ -311,140 +260,84 @@ function MasterPage() {
   };
 
   const saveRecord = async () => {
-    if (!form.code.trim() || !form.name.trim()) {
+    const code = form.code.trim();
+    const name = form.name.trim();
+    if (!code || !name) {
       toast.error("Code and name are required");
       return;
     }
+    const duplicate = activeRecords.find(
+      (r) => r.code.toLowerCase() === code.toLowerCase() && r.id !== editingItem?.id
+    );
+    if (duplicate) {
+      toast.error(`Code ${code} already exists`);
+      return;
+    }
+    const description = form.description.trim() || null;
 
-    if (editingItem) {
-      // Update existing record
-      if (!isMaterial) {
-        await supabase.from("masters").update({
-          code: form.code,
-          name: form.name,
-          description: form.description || null,
-        }).eq("id", editingItem.id);
+    if (isWorkType) {
+      const list = editingItem
+        ? activeRecords.map((item) =>
+            item.id === editingItem.id ? { ...item, code, name, description: description ?? undefined } : item
+          )
+        : [{ id: `${type}-${Date.now()}`, code, name, description: description ?? undefined, active: true }, ...activeRecords];
+      persistWorkTypes(list);
+    } else if (editingItem) {
+      const { error } = await supabase
+        .from("masters")
+        .update({ code, name, description })
+        .eq("id", editingItem.id);
+      if (error) {
+        toast.error(`Could not update record: ${masterErrorMessage(error)}`);
+        return;
       }
-
-      setLocalRecords((prev) => {
-        const list = prev[type] || activeRecords;
-        const updated = list.map((item) =>
-          item.id === editingItem.id
-            ? {
-                ...item,
-                code: form.code,
-                name: form.name,
-                description: form.description || undefined,
-                composition: form.composition || undefined,
-                denier: form.denier ? Number(form.denier) : undefined,
-                rate_per_kg: form.rate_per_kg ? Number(form.rate_per_kg) : undefined,
-              }
-            : item
-        );
-        if (type === "work_type") {
-          saveLocalWorkTypes(
-            updated.map((u) => ({
-              id: u.id,
-              code: u.code,
-              name: u.name,
-              description: u.description,
-              active: u.active,
-            }))
-          );
-        }
-        return { ...prev, [type]: updated };
-      });
-      toast.success(`Record ${form.code} updated successfully`);
     } else {
-      // Create new record
-      const newId = `${type}-${Date.now()}`;
-      const newItem: GenericMasterItem = {
-        id: newId,
-        code: form.code,
-        name: form.name,
-        description: form.description || undefined,
-        composition: form.composition || undefined,
-        denier: form.denier ? Number(form.denier) : undefined,
-        rate_per_kg: form.rate_per_kg ? Number(form.rate_per_kg) : undefined,
-        active: true,
-      };
-
-      if (!isMaterial) {
-        await supabase.from("masters").insert({
-          master_type: type,
-          code: form.code,
-          name: form.name,
-          description: form.description || null,
-        });
-      }
-
-      setLocalRecords((prev) => {
-        const list = prev[type] || activeRecords;
-        const nextList = [newItem, ...list];
-        if (type === "work_type") {
-          saveLocalWorkTypes(
-            nextList.map((u) => ({
-              id: u.id,
-              code: u.code,
-              name: u.name,
-              description: u.description,
-              active: u.active,
-            }))
-          );
-        }
-        return { ...prev, [type]: nextList };
+      const { error } = await supabase.from("masters").insert({
+        master_type: type,
+        code,
+        name,
+        description,
       });
-      toast.success(`New ${meta?.label ?? type} record added`);
+      if (error) {
+        toast.error(`Could not create record: ${masterErrorMessage(error)}`);
+        return;
+      }
     }
 
+    toast.success(editingItem ? `Record ${code} updated successfully` : `New ${meta?.label ?? type} record added`);
     setOpen(false);
     setEditingItem(null);
-    qc.invalidateQueries({ queryKey: ["master", type] });
+    await qc.invalidateQueries({ queryKey: ["master", type] });
   };
 
   const handleDeleteRecord = async (item: GenericMasterItem) => {
-    if (!isMaterial) {
-      await supabase.from("masters").delete().eq("id", item.id);
-    }
-    setLocalRecords((prev) => {
-      const list = prev[type] || activeRecords;
-      const nextList = list.filter((r) => r.id !== item.id);
-      if (type === "work_type") {
-        saveLocalWorkTypes(
-          nextList.map((u) => ({
-            id: u.id,
-            code: u.code,
-            name: u.name,
-            description: u.description,
-            active: u.active,
-          }))
-        );
+    if (isWorkType) {
+      persistWorkTypes(activeRecords.filter((r) => r.id !== item.id));
+    } else {
+      const { error } = await supabase.from("masters").delete().eq("id", item.id);
+      if (error) {
+        toast.error(`Could not delete record: ${masterErrorMessage(error)}`);
+        setDeletingItem(null);
+        return;
       }
-      return { ...prev, [type]: nextList };
-    });
+    }
     toast.success(`Record ${item.code} deleted successfully`);
     setDeletingItem(null);
-    qc.invalidateQueries({ queryKey: ["master", type] });
+    await qc.invalidateQueries({ queryKey: ["master", type] });
   };
 
-  const handleToggleStatus = (item: GenericMasterItem) => {
+  const handleToggleStatus = async (item: GenericMasterItem) => {
     const isNowActive = item.active === false;
-    setLocalRecords((prev) => {
-      const list = prev[type] || activeRecords;
-      const updated = list.map((r) => (r.id === item.id ? { ...r, active: isNowActive } : r));
-      if (type === "work_type") {
-        saveLocalWorkTypes(
-          updated.map((u) => ({
-            id: u.id,
-            code: u.code,
-            name: u.name,
-            description: u.description,
-            active: u.active,
-          }))
-        );
+    if (isWorkType) {
+      persistWorkTypes(activeRecords.map((r) => (r.id === item.id ? { ...r, active: isNowActive } : r)));
+    } else {
+      const { error } = await supabase.from("masters").update({ active: isNowActive }).eq("id", item.id);
+      if (error) {
+        toast.error(`Could not change status: ${masterErrorMessage(error)}`);
+        return;
       }
-      return { ...prev, [type]: updated };
-    });
+      await qc.invalidateQueries({ queryKey: ["master", type] });
+    }
     toast.success(`Record ${item.code} ${isNowActive ? "activated" : "deactivated"}`);
   };
 
@@ -579,11 +472,25 @@ function MasterPage() {
                 {!filteredRows.length && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                      <Layers className="mx-auto size-8 text-muted-foreground/30 mb-2" />
-                      <p className="text-xs font-semibold">No records in this master yet.</p>
-                      <p className="text-[0.6875rem] text-muted-foreground mt-0.5">
-                        Click "+ New Record" to add entry.
-                      </p>
+                      {loadError ? (
+                        <>
+                          <AlertTriangle className="mx-auto size-8 text-destructive/60 mb-2" />
+                          <p className="text-xs font-semibold text-destructive">Could not load records.</p>
+                          <p className="text-[0.6875rem] text-muted-foreground mt-0.5">{loadError.message}</p>
+                        </>
+                      ) : isLoading ? (
+                        <p className="text-xs font-semibold">Loading records…</p>
+                      ) : (
+                        <>
+                          <Layers className="mx-auto size-8 text-muted-foreground/30 mb-2" />
+                          <p className="text-xs font-semibold">
+                            {search.trim() ? "No records match your search." : "No records in this master yet."}
+                          </p>
+                          <p className="text-[0.6875rem] text-muted-foreground mt-0.5">
+                            Click "+ New Record" to add entry.
+                          </p>
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 )}

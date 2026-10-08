@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
-import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DesignsRouteImport } from './routes/designs'
 import { Route as FeedersRouteImport } from './routes/feeders'
@@ -48,11 +47,6 @@ const IndexRoute = IndexRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApprovalsRoute = ApprovalsRouteImport.update({
-  id: '/approvals',
-  path: '/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -194,7 +188,6 @@ const SystemWhatsappRoute = SystemWhatsappRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
   '/designs': typeof DesignsRoute
   '/feeders': typeof FeedersRoute
@@ -226,7 +219,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
   '/designs': typeof DesignsRoute
   '/feeders': typeof FeedersRoute
@@ -259,7 +251,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/approvals': typeof ApprovalsRoute
   '/auth': typeof AuthRoute
   '/designs': typeof DesignsRoute
   '/feeders': typeof FeedersRoute
@@ -293,7 +284,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analytics'
-    | '/approvals'
     | '/auth'
     | '/designs'
     | '/feeders'
@@ -325,7 +315,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/analytics'
-    | '/approvals'
     | '/auth'
     | '/designs'
     | '/feeders'
@@ -357,7 +346,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/analytics'
-    | '/approvals'
     | '/auth'
     | '/designs'
     | '/feeders'
@@ -390,7 +378,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
-  ApprovalsRoute: typeof ApprovalsRoute
   AuthRoute: typeof AuthRoute
   DesignsRoute: typeof DesignsRoute
   FeedersRoute: typeof FeedersRoute
@@ -434,13 +421,6 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/approvals': {
-      id: '/approvals'
-      path: '/approvals'
-      fullPath: '/approvals'
-      preLoaderRoute: typeof ApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -638,7 +618,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
-  ApprovalsRoute: ApprovalsRoute,
   AuthRoute: AuthRoute,
   DesignsRoute: DesignsRoute,
   FeedersRoute: FeedersRoute,

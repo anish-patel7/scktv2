@@ -29,7 +29,6 @@ export const NAV: NavGroup[] = [
     label: "Costing",
     items: [
       { label: "Cost Sheets", to: "/cost-sheets" },
-      { label: "Approvals", to: "/approvals" },
     ],
   },
   {
